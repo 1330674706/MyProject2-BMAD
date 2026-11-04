@@ -318,12 +318,12 @@ updated: 2026-11-04
 
 1. 默认密码的具体取值与告知方式（Brief 仅规定"重置为默认密码"）。
 2. CSV 的列定义与是否包含已取消记录；当前规范为仅导出有效占用，取消历史在操作日志中。
-3. 取消后是否需要在库中保留占用行以便查询历史；当前假设为移除并写日志。若改为保留，唯一约束需改为部分索引。
+3. 已关闭：取消即删除占用行并写操作日志，不做软删除；唯一约束保持普通唯一索引。
 4. 设备初始清单与各设备开放时间由谁在何时提供。
-5. 管理员账号的初始化方式（首次启动种子账号或部署脚本创建）。
+5. 已关闭：`python -m src.seed` 创建 1 个管理员账号；用户名/初始密码从环境变量读取，README 写清。
 6. 浏览器支持基线（当前暂定 Chrome、Edge、Safari 最近两个大版本）。
-7. `evidence/` 目前只有并发测试截图，上线前是否补 1 周基线记录。
-8. 已存在预约时修改设备开放时间如何处理：保留越界预约、拒绝修改，还是提示管理员先改单。
+7. `evidence/` 目前有 D-001 截图；并发测试截图待 Story 2.2 完成后补，上线前是否补 1 周基线记录。
+8. 已关闭：新开放时间若使已有预约越界，拒绝保存，提示管理员先取消/改单；不做自动迁移。
 
 ## 10. 假设索引
 
@@ -344,3 +344,22 @@ updated: 2026-11-04
 
 - 约 40 名学生、1 名管理员（Brief §2）。
 - 默认密码具体取值由部署配置决定——Brief 未指定，见开放问题 1。
+
+## 11. 需求溯源
+
+下表把 8 条 FR 索引到 Brief、ADR、Story 与测试。ADR/Story/Test 为当前计划编号；架构与故事拆分完成后，若编号或路径变化，以实际文件为准并同步更新本表。每次新增、重命名或拆分 ADR、Story、测试，都必须回头更新这里，否则视为文档漂移。
+
+| FR | 能力 | Brief 来源 | ADR（计划） | Story（计划） | Test（计划） |
+|---|---|---|---|---|---|
+| FR-1 | 学号密码账号 | §4、§6、§7 | ADR-004 会话登录 | 1.1 | `tests/test_auth_login.py` |
+| FR-2 | 设备清单与开放时间 | §4、§7 | ADR-002 SQLite；ADR-003 服务端渲染 | 1.2、1.4 | `tests/test_equipment_catalog.py` |
+| FR-3 | 占用状态视图 | §4、§5 | ADR-002；ADR-003 | 1.3 | `tests/test_slot_view.py` |
+| FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束 | 2.1 | `tests/test_create_booking.py` |
+| FR-5 | 冲突原子拒绝 | §3、§4、§6 | ADR-001 唯一约束 | 2.2 | `tests/test_booking_concurrency.py` |
+| FR-6 | 学生取消预约 | §4、§7 | ADR-001；ADR-002 | 2.3 | `tests/test_cancel_booking.py` |
+| FR-7 | 改单与锁定时段 | §4 | ADR-002；ADR-003 | 3.1、3.2 | `tests/test_admin_edit_lock.py` |
+| FR-8 | 周表导出与操作日志 | §4 | ADR-002 | 3.3、3.4 | `tests/test_export_audit.py` |
+
+NFR 测试索引：NFR-1 → `tests/test_booking_concurrency.py`；NFR-2 → `tests/test_ops_startup.py`；NFR-3 → `tests/test_responsive_smoke.py` + 375/1280 截图；NFR-4 → `tests/test_auth_password_hash.py`。
+
+抽查示例：FR-5 → ADR-001 → Story 2.2 → `tests/test_booking_concurrency.py`；FR-7 → ADR-002/003 → Story 3.1/3.2 → `tests/test_admin_edit_lock.py`。

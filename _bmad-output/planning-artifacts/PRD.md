@@ -360,14 +360,14 @@ updated: 2026-11-04
 | FR | 能力 | Brief 来源 | ADR（计划） | Story（计划） | Test（计划） |
 |---|---|---|---|---|---|
 | FR-1 | 学号密码账号 | §4、§6、§7 | ADR-004 会话登录 | 1.1 | `tests/test_auth_login.py` |
-| FR-2 | 设备清单与开放时间 | §4、§7 | ADR-002 SQLite；ADR-003 服务端渲染 | 1.2、1.4 | `tests/test_equipment_catalog.py` |
-| FR-3 | 占用状态视图 | §4、§5 | ADR-002；ADR-003；ADR-005 | 1.3 | `tests/test_slot_view.py` |
-| FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束；ADR-005 | 2.1 | `tests/test_create_booking.py` |
-| FR-5 | 冲突原子拒绝 | §3、§4、§6 | ADR-001 唯一约束 | 2.2 | `tests/test_booking_concurrency.py` |
+| FR-2 | 设备清单与开放时间 | §4、§7 | ADR-002 SQLite；ADR-003 服务端渲染；ADR-005 | 1.2 | `tests/test_equipment_catalog.py` |
+| FR-3 | 占用状态视图 | §4、§5 | ADR-002；ADR-003；ADR-005 | 1.3、3.1 | `tests/test_slot_view.py`、`tests/test_admin_week_view.py` |
+| FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束；ADR-005 | 2.1、2.4 | `tests/test_create_booking.py`、`tests/test_slot_rules.py` |
+| FR-5 | 冲突原子拒绝 | §3、§4、§6 | ADR-001 唯一约束；ADR-005 | 2.2、3.3 | `tests/test_booking_concurrency.py`、`tests/test_admin_lock.py` |
 | FR-6 | 我的预约与取消 | §4、§7 | ADR-001；ADR-002；ADR-005 | 2.3 | `tests/test_cancel_booking.py` |
-| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-002；ADR-003；ADR-005 | 3.1、3.2 | `tests/test_admin_edit_lock.py` |
-| FR-8 | 本周视图导出与操作日志 | §4 | ADR-002；ADR-005 | 3.3、3.4 | `tests/test_export_audit.py` |
+| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-002；ADR-003；ADR-005 | 2.4、3.1、3.2、3.3 | `tests/test_slot_rules.py`、`tests/test_admin_week_view.py`、`tests/test_admin_edit_booking.py`、`tests/test_admin_lock.py` |
+| FR-8 | 本周视图导出与操作日志 | §4 | ADR-002；ADR-005 | 3.4 | `tests/test_export_audit.py` |
 
-NFR 测试索引：NFR-1 → `tests/test_booking_concurrency.py`；NFR-2 → `tests/test_ops_startup.py`；NFR-3 → `tests/test_responsive_smoke.py`（自动冒烟）+ 375/1280 人工截图；NFR-4 → `tests/test_auth_password_hash.py`。
+NFR 测试索引：NFR-1 → `tests/test_booking_concurrency.py`（含 C1–C3 变异对照）；NFR-2 → `tests/test_ops_startup.py`；NFR-3 → `tests/test_slot_view.py`（viewport 与断点断言）+ `tests/test_admin_week_view.py`，另需 375/1280 两档人工截图；NFR-4 → `tests/test_auth_login.py`（哈希与明文扫描）+ `tests/test_export_audit.py`（导出与日志脱敏）。
 
-抽查示例：FR-5 → ADR-001 → Story 2.2 → `tests/test_booking_concurrency.py`；FR-7 → ADR-002/003 → Story 3.1/3.2 → `tests/test_admin_edit_lock.py`。
+抽查示例：FR-5 → ADR-001/005 → Story 2.2、3.3 → `tests/test_booking_concurrency.py`、`tests/test_admin_lock.py`；FR-7 → ADR-001/002/003 → Story 2.4、3.1、3.2、3.3 → `tests/test_slot_rules.py`、`tests/test_admin_week_view.py`、`tests/test_admin_edit_booking.py`、`tests/test_admin_lock.py`。

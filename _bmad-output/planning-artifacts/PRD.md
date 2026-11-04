@@ -355,18 +355,18 @@ updated: 2026-11-04
 
 ## 11. 需求溯源
 
-下表把 8 条 FR 索引到 Brief、ADR、Story 与测试。ADR/Story/Test 为当前计划编号；架构与故事拆分完成后，若编号或路径变化，以实际文件为准并同步更新本表。每次新增、重命名或拆分 ADR、Story、测试，都必须回头更新这里，否则视为文档漂移。
+下表把 8 条 FR 索引到 Brief、ADR、Story 与测试。ADR/Story/Test 为当前计划编号；架构与故事拆分完成后，若编号或路径变化，以实际文件为准并同步更新本表。每次新增、重命名或拆分 ADR、Story、测试，都必须回头更新这里，否则视为文档漂移。ADR-005（UTC 定长存储）在架构评审后补入，凡涉及 slot 时间比较、展示或导出的 FR 均需回指该条。
 
 | FR | 能力 | Brief 来源 | ADR（计划） | Story（计划） | Test（计划） |
 |---|---|---|---|---|---|
 | FR-1 | 学号密码账号 | §4、§6、§7 | ADR-004 会话登录 | 1.1 | `tests/test_auth_login.py` |
 | FR-2 | 设备清单与开放时间 | §4、§7 | ADR-002 SQLite；ADR-003 服务端渲染 | 1.2、1.4 | `tests/test_equipment_catalog.py` |
-| FR-3 | 占用状态视图 | §4、§5 | ADR-002；ADR-003 | 1.3 | `tests/test_slot_view.py` |
-| FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束 | 2.1 | `tests/test_create_booking.py` |
+| FR-3 | 占用状态视图 | §4、§5 | ADR-002；ADR-003；ADR-005 | 1.3 | `tests/test_slot_view.py` |
+| FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束；ADR-005 | 2.1 | `tests/test_create_booking.py` |
 | FR-5 | 冲突原子拒绝 | §3、§4、§6 | ADR-001 唯一约束 | 2.2 | `tests/test_booking_concurrency.py` |
-| FR-6 | 我的预约与取消 | §4、§7 | ADR-001；ADR-002 | 2.3 | `tests/test_cancel_booking.py` |
-| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-002；ADR-003 | 3.1、3.2 | `tests/test_admin_edit_lock.py` |
-| FR-8 | 本周视图导出与操作日志 | §4 | ADR-002 | 3.3、3.4 | `tests/test_export_audit.py` |
+| FR-6 | 我的预约与取消 | §4、§7 | ADR-001；ADR-002；ADR-005 | 2.3 | `tests/test_cancel_booking.py` |
+| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-002；ADR-003；ADR-005 | 3.1、3.2 | `tests/test_admin_edit_lock.py` |
+| FR-8 | 本周视图导出与操作日志 | §4 | ADR-002；ADR-005 | 3.3、3.4 | `tests/test_export_audit.py` |
 
 NFR 测试索引：NFR-1 → `tests/test_booking_concurrency.py`；NFR-2 → `tests/test_ops_startup.py`；NFR-3 → `tests/test_responsive_smoke.py`（自动冒烟）+ 375/1280 人工截图；NFR-4 → `tests/test_auth_password_hash.py`。
 

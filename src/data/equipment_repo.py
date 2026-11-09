@@ -6,11 +6,24 @@ INSERT_EQUIPMENT = (
     "INSERT INTO equipment (id, name, open_start, open_end, active)"
     " VALUES (?, ?, ?, ?, 1)"
 )
+UPSERT_EQUIPMENT = (
+    "INSERT INTO equipment (id, name, open_start, open_end, active)"
+    " VALUES (?, ?, ?, ?, 1)"
+    " ON CONFLICT(id) DO UPDATE SET"
+    " name = excluded.name,"
+    " open_start = excluded.open_start,"
+    " open_end = excluded.open_end,"
+    " active = 1"
+)
 UPDATE_WINDOW = "UPDATE equipment SET name = ?, open_start = ?, open_end = ? WHERE id = ?"
 
 
 def insert_equipment(conn, *, equipment_id, name, open_start, open_end) -> None:
     conn.execute(INSERT_EQUIPMENT, (equipment_id, name, open_start, open_end))
+
+
+def upsert_equipment(conn, *, equipment_id, name, open_start, open_end) -> None:
+    conn.execute(UPSERT_EQUIPMENT, (equipment_id, name, open_start, open_end))
 
 
 def list_active(conn):

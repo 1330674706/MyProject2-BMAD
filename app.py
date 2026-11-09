@@ -14,6 +14,7 @@ from src.web.auth import bp as auth_bp
 from src.web.catalog import bp as catalog_bp
 from src.web.csrf import current_csrf_token, set_csrf_cookie
 from src.web.errors import register_error_handlers
+from src.web.health import bp as health_bp
 
 
 def create_app() -> Flask:
@@ -38,6 +39,7 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(catalog_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(health_bp)
     register_error_handlers(app)
     app.teardown_appcontext(close_db)
 

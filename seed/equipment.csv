@@ -1,0 +1,4 @@
+equipment_id,name,open_start,open_end
+EQ-001,示波器,08:00,22:00
+EQ-002,万用表,09:00,18:00
+EQ-003,直流电源,08:30,20:30

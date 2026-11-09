@@ -54,3 +54,13 @@
 - 结果：不改代码；ADR-004 §8.1 的 CSRF 条目按实际实现（匿名 double-submit + 登录后转会话）重写，并把注入风险写成「已接受」，注明改 HTTPS 时同步启用 `Secure=True` 与 `__Host-`。复审第 2 条（登录失败不带 session cookie）确认通过，无动作。
 - 验证计划：`tests/test_auth_login.py` 的 CSRF 用例保持全绿；演示时用 HTTP 访问，若评审问起，指 ADR-004 的残余风险段。
 - 证据：本条无对话截图。可倒查：`architecture.md` §8.1 CSRF 条目、`PRD.md` §7.3 已接受风险清单、`tests/test_auth_login.py` 的 CSRF 用例。
+
+## D-010 2026-11-09 Story 1.4 只交付三件事，管理员种子记入 deferred
+
+- 类型：实质修改（缩小 Story 交付面）
+- 触发：`bmad-build` Story 1.4 启动时，用户明确「交付三件事，只做这三件」，与 `epics.md` 的 7 条 AC（含管理员种子、单 .db、复制库）不完全一致
+- 智能体建议：严格按用户给出的三项交付：一条命令启动 + `/health`、设备 CSV 幂等导入、不新增依赖且不做容器/守护/备份；管理员种子、README、复制库断言不实现
+- 判断与依据：用户指令优先于规划文档；把管理员种子塞进本轮会把「运维部署」扩成「账号初始化」，且需要新增 actor 语义。`sprint-status.yaml` 只能置 `review`（R6），由人工决定是否补做；三项之外的发现全部可追溯地记入 `deferred-work.md`，不静默丢弃
+- 结果：新增 `src/serve.py`、`src/web/health.py`、`src/seed.py`、`seed/equipment.csv`，改 `app.py`、`config.py`、`equipment_repo.py`、`equipment_service.py`；种子复用 1.2 窗口校验、单事务 upsert、变更写审计；未碰 2.1 与 `occupancy`
+- 验证计划：`tests/test_ops_startup.py` 先红后绿（7 → 16 passed），全量 73 passed；`python -m src.serve` 缺任一必需 env 时非 0 退出且不监听
+- 证据：`_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md` 的 Implementation Notes 与 Review Triage Log；`deferred-work.md` 的 6 条待办

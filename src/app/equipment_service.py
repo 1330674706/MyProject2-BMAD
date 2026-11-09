@@ -89,15 +89,7 @@ def update_window(conn, *, equipment_id, name, open_start, open_end, actor_id):
         if current is None:
             raise NotFound("设备不存在")
 
-        since_utc = now_utc()
-        conflicts = [
-            row["slot_start"]
-            for row in equipment_repo.list_occupied_slot_starts(conn, equipment_id, since_utc)
-            if not start_time <= utc_to_local(row["slot_start"]).time() < end_time
-        ]
-        if conflicts:
-            listed = ", ".join(conflicts)
-            raise Conflict(f"设备 {equipment_id} 的开放时间与已占用 slot 冲突: {listed}")
+        _assert_window_covers_occupancy(conn, equipment_id, start_time, end_time)
 
         clean_name = (name or "").strip() or current["name"]
         equipment_repo.update_window(
@@ -124,3 +116,102 @@ def update_window(conn, *, equipment_id, name, open_start, open_end, actor_id):
             created_at=now_utc(),
         )
     return equipment_repo.get_by_id(conn, equipment_id)
+
+
+def _assert_window_covers_occupancy(conn, equipment_id, start_time, end_time) -> None:
+    since_utc = now_utc()
+    conflicts = [
+        row["slot_start"]
+        for row in equipment_repo.list_occupied_slot_starts(conn, equipment_id, since_utc)
+        if not start_time <= utc_to_local(row["slot_start"]).time() < end_time
+    ]
+    if conflicts:
+        listed = ", ".join(conflicts)
+        raise Conflict(f"设备 {equipment_id} 的开放时间与已占用 slot 冲突: {listed}")
+
+
+SEED_ACTOR_ID = "system"
+
+
+def prepare_equipment_rows(rows) -> list[tuple[str, str, str, str]]:
+    """校验种子行；错误带物理行号，重复 equipment_id 直接拒绝（FR-2）。"""
+    prepared = []
+    seen: dict[str, int] = {}
+    for line_no, equipment_id, name, open_start, open_end in rows:
+        clean_id = (equipment_id or "").strip()
+        clean_name = (name or "").strip()
+        if not clean_id:
+            raise Validation(f"第 {line_no} 行: equipment_id 不能为空")
+        if not clean_name:
+            raise Validation(f"第 {line_no} 行: name 不能为空")
+        if clean_id in seen:
+            raise Validation(f"第 {line_no} 行: equipment_id 与第 {seen[clean_id]} 行重复")
+        try:
+            start_text, end_text = _validate_window(open_start, open_end)
+        except Validation as error:
+            raise Validation(f"第 {line_no} 行: {error.message}") from None
+        seen[clean_id] = line_no
+        prepared.append((clean_id, clean_name, start_text, end_text))
+    return prepared
+
+
+def write_equipment_rows(conn, prepared) -> int:
+    """整文件一个事务：新值才 upsert，窗口收窄不得越过已占用 slot，并写审计（FR-2、§4）。"""
+    with write_tx(conn):
+        for equipment_id, name, open_start, open_end in prepared:
+            current = equipment_repo.get_by_id(conn, equipment_id)
+            if (
+                current is not None
+                and current["active"] == 1
+                and current["name"] == name
+                and current["open_start"] == open_start
+                and current["open_end"] == open_end
+            ):
+                continue
+
+            if current is not None and (
+                current["open_start"] != open_start or current["open_end"] != open_end
+            ):
+                _assert_window_covers_occupancy(
+                    conn,
+                    equipment_id,
+                    time.fromisoformat(open_start),
+                    time.fromisoformat(open_end),
+                )
+
+            equipment_repo.upsert_equipment(
+                conn,
+                equipment_id=equipment_id,
+                name=name,
+                open_start=open_start,
+                open_end=open_end,
+            )
+            audit_repo.insert_audit(
+                conn,
+                actor_id=SEED_ACTOR_ID,
+                action="equipment_update",
+                target_type="equipment",
+                target_id=equipment_id,
+                before_json=None
+                if current is None
+                else redact.dump_fields(
+                    "equipment",
+                    {
+                        "name": current["name"],
+                        "open_start": current["open_start"],
+                        "open_end": current["open_end"],
+                        "active": current["active"],
+                    },
+                ),
+                after_json=redact.dump_fields(
+                    "equipment",
+                    {
+                        "name": name,
+                        "open_start": open_start,
+                        "open_end": open_end,
+                        "active": 1,
+                    },
+                ),
+                created_at=now_utc(),
+            )
+    return len(prepared)

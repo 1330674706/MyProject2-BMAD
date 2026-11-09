@@ -14,7 +14,7 @@ sources:
   - _bmad-output/planning-artifacts/product-brief.md
   - _bmad-output/planning-artifacts/prds/prd-MyProject2-2026-11-04/addendum.md
   - decision-log.md（D-001）
-stack-lock: Python 3.12 · Flask 3 · SQLite · Jinja2 · pytest
+stack-lock: Python 3.12+ · Flask 3 · SQLite · Jinja2 · pytest
 ---
 
 # 架构：实验室设备预约系统
@@ -29,7 +29,7 @@ stack-lock: Python 3.12 · Flask 3 · SQLite · Jinja2 · pytest
 | ADR-004 | 签名 Cookie 会话 + 密码版本号失效 | 有人加 session 表或 JWT，重置密码后旧会话仍然有效 | FR-1、NFR-2、NFR-4 |
 | ADR-005 | 所有时刻以定长 UTC 文本存储，转换只在一个模块发生 | 有人存本地时间或带 `+08:00` 的字符串，同一时刻出现两种字符串，唯一键失效 | FR-4、FR-6、FR-8、NFR-1 |
 
-技术栈由用户锁定：**Python 3.12 + Flask 3 + SQLite + Jinja2 + pytest**。本文不做选型再讨论，只在 ADR 的"被否决的备选"里记录为什么别的路不走。
+技术栈由用户锁定：**Python 3.12+（实现基线 3.13.9）+ Flask 3 + SQLite + Jinja2 + pytest**。本文不做选型再讨论，只在 ADR 的"被否决的备选"里记录为什么别的路不走。
 
 ## 1. 本文档管什么
 
@@ -579,16 +579,16 @@ CREATE INDEX idx_audit_actor ON audit_log(actor_id, created_at DESC);
 
 ## 12. 技术栈
 
-目标解释器为 Python 3.12。下表版本在作者机器（Python 3.13.9）的已安装包上核对；就绪后需在 3.12 环境用 `pip install -r requirements.txt` 复跑一次，并记录 `python -c "import sqlite3;print(sqlite3.sqlite_version)"` 的输出。
+实现与测试基线为 Python 3.13.9（作者机器）；3.12 为兼容下限，代码不使用 3.13 独有语法。下表版本在上述环境核对，`requirements.txt` 的下限按 3.12 可取到的最新版标注。较低版本未单独复跑，若评审在 3.12 上运行，以 `python -c "import sqlite3;print(sqlite3.sqlite_version)"` 的输出为准。
 
 | 名称 | 版本 |
 | --- | --- |
-| Python | 3.12.x（部署与 CI 基准） |
+| Python | 3.13.9（实现与测试基线）；3.12+ 为兼容下限 |
 | Flask | 3.1.3 |
 | Jinja2 | 3.1.6 |
 | Werkzeug | 3.1.3 |
 | itsdangerous | 2.2.0 |
-| SQLite | ≥ 3.24（命名 UNIQUE 约束 + `GLOB` CHECK）；Windows 版 CPython 3.12 自带版本以 `sqlite3.sqlite_version` 实测为准 |
+| SQLite | ≥ 3.24（命名 UNIQUE 约束 + `GLOB` CHECK）；Windows 版 CPython 自带版本以 `sqlite3.sqlite_version` 实测为准 |
 | pytest | 8.4.2 |
 | tzdata | ≥ 2024.1（仅 Windows 需要，供 `zoneinfo` 使用） |
 

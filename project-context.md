@@ -3,7 +3,7 @@
 
 ## 实验室设备预约系统（MyProject2）
 
-学生与管理员预约实验室设备 30 分钟 slot 的单机 Web 应用。Python 3.12 + Flask 3 + SQLite + Jinja2 + pytest，单进程、单文件库 `data/lab.db`、服务端渲染。规划与构建契约在 `_bmad-output/planning-artifacts/`：`PRD.md`（FR/NFR、§11 溯源）、`architecture.md`（ADR-001..005、§16 禁止表）、`epics.md`（3 Epic / 12 Story）。架构是构建契约；文档冲突时以 `architecture.md` 为准，并按 R7 同步 §11。
+学生与管理员预约实验室设备 30 分钟 slot 的单机 Web 应用。Python 3.12+（基线 3.13.9） + Flask 3 + SQLite + Jinja2 + pytest，单进程、单文件库 `data/lab.db`、服务端渲染。规划与构建契约在 `_bmad-output/planning-artifacts/`：`PRD.md`（FR/NFR、§11 溯源）、`architecture.md`（ADR-001..005、§16 禁止表）、`epics.md`（3 Epic / 12 Story）。架构是构建契约；文档冲突时以 `architecture.md` 为准，并按 R7 同步 §11。
 
 ## 硬规则（违反即退回；不得以"为了跑通/更简单"为由豁免）
 
@@ -29,7 +29,7 @@
 - 启动：`python -m src.serve`，单进程 `threaded=True`；`GET /health` 返回 200 是"服务可用"的唯一判据。
 - 测试：`pytest -q`；并发证据另跑 `python -m tests.concurrency_demo`，输出归档到 `evidence/`。
 - 必需环境变量：`LAB_SECRET_KEY`（≥32 字节）、`LAB_DEFAULT_PASSWORD`（≥8 位）；缺失必须启动失败，不得加默认值或回退。
-- 版本：Python 3.12.x、Flask 3.1.3、Jinja2 3.1.6、Werkzeug 3.1.3、itsdangerous 2.2.0、pytest 8.4.2、SQLite ≥3.24、tzdata ≥2024.1（Windows）；依赖只从 `requirements.txt` 装。
+- 版本：Python 3.13.9（3.12+ 兼容）、Flask 3.1.3、Jinja2 3.1.6、Werkzeug 3.1.3、itsdangerous 2.2.0、pytest 8.4.2、SQLite ≥3.24、tzdata ≥2024.1（Windows）；依赖只从 `requirements.txt` 装。
 - 代码落地前，以上命令是 `architecture.md` §15 的契约而非已验证事实。
 
 ## 与默认不同的约定

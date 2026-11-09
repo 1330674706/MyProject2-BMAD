@@ -19,7 +19,13 @@
 {% if error %}<p class="alert">{{ error }}</p>{% endif %}
 {% if grid %}
 <p class="hint">开放时间 {{ grid.open_start }}–{{ grid.open_end }}，每格 30 分钟。</p>
-{% include "_slot_grid.html" %}
+<form class="booking-form" method="post" action="{{ url_for('bookings.create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="equipment_id" value="{{ grid.equipment_id }}">
+  <input type="hidden" name="date" value="{{ grid.day }}">
+  {% with selectable_form=True %}{% include "_slot_grid.html" %}{% endwith %}
+  <button type="submit">提交预约</button>
+</form>
 <ul class="slot-legend">
   <li class="slot-key is-free">空闲</li>
   <li class="slot-key is-booked_by_self">我的预约</li>

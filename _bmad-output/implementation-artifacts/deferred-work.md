@@ -21,3 +21,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md`
   summary: 统一 `PRD.md` §11 与 `epics.md` 关于 FR-2 是否由 Story 1.4 承载的表述。
   evidence: 规划文档自相矛盾，属文档漂移；按 R7 修文档需同一改动同步 §11，不在本次代码交付范围。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-create-booking.md`
+  summary: 409 响应重渲染同一 slot 页面、保留已选 slot 并标出冲突项。
+  evidence: architecture ADR-003 与 epics AR-3 要求 409 同页重渲染；epics 把冲突 UI 与原子性验收分配给 Story 2.2，2.1 只建立 409 写路径与完整冲突列表。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-create-booking.md`
+  summary: 统一 7 天窗口语义：校验器只看首格，slot 网格逐格标记 `closed_window`。
+  evidence: PRD FR-4 写的是「首个 slot 的开始时间在未来 7 天内」，而 `slot_service` 逐格判断；跨格差异需规划确认后再改校验器或网格。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-create-booking.md`
+  summary: 由服务端派生成功后的跳转日期，或拒绝与所提交 slot 不一致的隐藏 `date`。
+  evidence: 隐藏 `date` 只影响 303 落点，不影响写入的 slot 集合；修复需让用例返回预约日期，属 2.3/2.4 页面整合范围。

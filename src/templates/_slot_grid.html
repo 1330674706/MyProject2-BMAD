@@ -3,6 +3,9 @@
   <li class="slot-cell" data-state="{{ cell.state }}" data-slot="{{ cell.start }}">
     <span class="slot-time">{{ cell.local_time }}</span>
     <span class="slot-label">{{ cell.label }}</span>
+    {% if selectable_form and cell.selectable %}
+    <input type="checkbox" name="slot" value="{{ cell.start }}" aria-label="{{ cell.local_time }} 开始预约">
+    {% endif %}
   </li>
   {% endfor %}
 </ol>

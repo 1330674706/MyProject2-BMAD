@@ -11,6 +11,7 @@ from src.core.config import load_config
 from src.data.db import close_db, initialize
 from src.web.admin import bp as admin_bp
 from src.web.auth import bp as auth_bp
+from src.web.bookings import bp as bookings_bp
 from src.web.catalog import bp as catalog_bp
 from src.web.csrf import current_csrf_token, set_csrf_cookie
 from src.web.errors import register_error_handlers
@@ -38,6 +39,7 @@ def create_app() -> Flask:
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(catalog_bp)
+    app.register_blueprint(bookings_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(health_bp)
     register_error_handlers(app)

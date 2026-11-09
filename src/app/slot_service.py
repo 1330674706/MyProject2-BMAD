@@ -51,6 +51,10 @@ class SlotCell:
     def label(self) -> str:
         return STATE_LABELS[self.state]
 
+    @property
+    def selectable(self) -> bool:
+        return self.state == "free"
+
 
 @dataclass(frozen=True)
 class SlotGrid:

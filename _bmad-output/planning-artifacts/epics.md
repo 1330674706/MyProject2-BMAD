@@ -1,5 +1,5 @@
 ---
-status: draft
+status: reviewed
 stepsCompleted: [1, 2, 3, 4]
 inputDocuments:
   - _bmad-output/planning-artifacts/PRD.md

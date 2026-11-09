@@ -52,8 +52,10 @@ def validate_slots(equipment, slots, now):
             raise Validation("slot 不在设备开放时间内")
 
     now_moment = parse_utc(now) if isinstance(now, str) else now
-    if moments[0] <= now_moment:
-        raise Validation("首个 slot 已经开始")
-    if moments[0] > now_moment + timedelta(days=WINDOW_DAYS):
-        raise Validation("首个 slot 超出 7 天可预约窗口")
+    window_end = now_moment + timedelta(days=WINDOW_DAYS)
+    for moment in moments:
+        if moment <= now_moment:
+            raise Validation("所选 slot 已开始")
+        if moment > window_end:
+            raise Validation("所选 slot 超出可约窗口")
     return list(slots)

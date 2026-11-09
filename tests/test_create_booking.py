@@ -199,6 +199,19 @@ def test_first_slot_must_be_within_seven_days(app, db_path):
     assert (far.status_code, near.status_code) == (400, 303)
 
 
+def test_later_slot_past_seven_day_window_returns_400_and_writes_nothing(app, db_path):
+    seed_equipment(db_path)
+    client = login_student(app)
+    slots = local_slots("2030-01-08", "09:00", 8)
+    before = counts(db_path)
+
+    resp = post_booking(client, slots=slots, day="2030-01-08")
+
+    assert resp.status_code == 400
+    assert counts(db_path) == before
+    assert "超出可约窗口" in resp.get_data(as_text=True)
+
+
 def test_equipment_mismatch_or_unknown_returns_400_and_writes_nothing(app, db_path):
     seed_equipment(db_path, "E1", "08:00", "22:00")
     seed_equipment(db_path, "E2", "10:00", "12:00")
@@ -273,3 +286,75 @@ def test_booking_form_offers_checkboxes_only_for_free_slots(app, db_path):
     assert post_booking(client, slots=booked).status_code == 303
     after = client.get(f"/slots?equipment_id=E1&date={DAY}").get_data(as_text=True)
     assert set(CHECKBOX_PATTERN.findall(after)) == all_slots - set(booked)
+
+
+def login_second_student(app, student_no="2025002"):
+    client = app.test_client()
+    assert register(client, student_no=student_no).status_code == 303
+    assert login(client, student_no=student_no).status_code == 303
+    return client
+
+
+def seed_locks(db_path, slots, equipment_id="E1"):
+    conn = connect(db_path)
+    try:
+        conn.executemany(
+            "INSERT INTO occupancy (equipment_id, slot_start, kind, booking_id, created_at)"
+            " VALUES (?, ?, 'lock', NULL, ?)",
+            [(equipment_id, slot, NOW) for slot in slots],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_taken_third_slot_returns_409_and_writes_nothing(app, db_path):
+    seed_equipment(db_path)
+    client = login_student(app)
+    other = login_second_student(app)
+    slots = local_slots(DAY, "14:00", 8)
+    assert post_booking(other, slots=[slots[2]]).status_code == 303
+    before = counts(db_path)
+
+    resp = post_booking(client, slots=slots)
+
+    assert resp.status_code == 409
+    assert counts(db_path) == before
+    assert slots[2] in resp.get_data(as_text=True)
+
+
+def test_scattered_locks_return_409_listing_every_conflict(app, db_path):
+    seed_equipment(db_path)
+    client = login_student(app)
+    slots = local_slots(DAY, "14:00", 8)
+    locked = [slots[1], slots[3], slots[6]]
+    seed_locks(db_path, locked)
+    before = counts(db_path)
+
+    resp = post_booking(client, slots=slots)
+    body = resp.get_data(as_text=True)
+
+    assert resp.status_code == 409
+    assert counts(db_path) == before
+    assert all(slot in body for slot in locked)
+
+
+def test_conflict_at_fifth_slot_leaves_earlier_slots_unwritten(app, db_path):
+    seed_equipment(db_path)
+    client = login_student(app)
+    other = login_second_student(app)
+    slots = local_slots(DAY, "14:00", 8)
+    assert post_booking(other, slots=[slots[4]]).status_code == 303
+    before = counts(db_path)
+
+    resp = post_booking(client, slots=slots)
+
+    assert resp.status_code == 409
+    assert counts(db_path) == before
+    early = fetch(
+        db_path,
+        "SELECT COUNT(*) AS n FROM occupancy WHERE equipment_id = ?"
+        " AND slot_start IN (?, ?, ?, ?)",
+        ("E1", *slots[:4]),
+    )[0]["n"]
+    assert early == 0

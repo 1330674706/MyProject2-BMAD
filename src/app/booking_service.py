@@ -37,14 +37,12 @@ def create_booking(conn, user_id, equipment_id, slots, now=None):
     now_text = now or now_utc()
     booking_id = new_id()
     validated = []
-    pre_conflicts = []
     try:
         with write_tx(conn):
             equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
             if equipment is None or not equipment["active"]:
                 raise Validation("设备不存在")
             validated = validate_slots(equipment, slots, now_text)
-            pre_conflicts = occupancy_repo.select_taken(conn, equipment_id, validated)
             booking_repo.insert_booking(
                 conn,
                 booking_id=booking_id,
@@ -86,6 +84,8 @@ def create_booking(conn, user_id, equipment_id, slots, now=None):
                 created_at=now_text,
             )
     except _SlotTaken:
-        conflicts = occupancy_repo.select_taken(conn, equipment_id, validated) or pre_conflicts
+        conflicts = occupancy_repo.select_taken(conn, equipment_id, validated)
+        if not conflicts:
+            raise Conflict("所选 slot 已被占用，请刷新后重试") from None
         raise Conflict(_conflict_text(conflicts)) from None
     return booking_id

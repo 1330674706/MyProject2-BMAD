@@ -35,4 +35,4 @@
 - 判断与依据：7 条里只有 1 条会在写代码时直接失败——ADR-004 正文写 `action='reset_password'`，而 §10.2 的 CHECK 与 Story 3.4 的 AC 都是 `password_reset`，DDL 会当场拒绝插入；另 3 条是文档漂移（FR-2 归属只列 1.2、Story 1.2 元数据漏 ADR-003、architecture §18 仍写「PRD §11 需补 ADR-005」）；1 条是 Story 内前向依赖（3.3 最后一条 AC 测 CSV 导出，导出在 3.4 才交付）；剩下 2 条不需要动文档（1.2/1.3 的 AC 用测试夹具直接造占用行；3.2 用第三个学生当观察者即可）。因笔误打回重跑整个规划，成本远高于直接改 5 处。
 - 结果：当场改 5 处——architecture §8.1 的 action 名改为 `password_reset`；architecture §18 第 3 条标记为已回写；PRD §11 FR-2 的 Story 列补 1.4 与 `tests/test_ops_startup.py`；epics 1.2 元数据补 ADR-003；epics 3.3 末条 CSV 断言迁入 3.4。AC 总数保持 88 条、Story 仍 12 条，sprint-status.yaml 未重排。留待开工前的 2 条：1.2/1.3 用夹具造数、2.2 补「两个冲突 slot 都在 409 响应里」的断言（FR-5 要求返回全部冲突）。
 - 验证计划：1.1 的 build 首次跑 `pytest` 时确认重置密码写入 `action='password_reset'` 不触发 CHECK 约束；3.4 完成后确认「锁定行不出现在导出中」由 `tests/test_export_audit.py` 单独覆盖。
-- 证据：本条无对话截图。可倒查：`sprint-status.yaml` 的 `sprints` 与 `development_status` 块、本轮 5 处文档改动（architecture.md §8.1/§18、PRD.md §11 FR-2 行、epics.md 1.2 元数据与 3.3→3.4 的 AC 迁移）。
+- 证据：`evidence/D-007_2026-11-09-chat-gate-concerns.png`——规划对话中 Codex 给出 CONCERNS 结论与 7 条顾虑的那一屏；书面侧佐证为 `sprint-status.yaml` 的 `sprints`、`development_status` 块与本轮 5 处文档改动。

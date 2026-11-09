@@ -36,3 +36,12 @@
 - 结果：当场改 5 处——architecture §8.1 的 action 名改为 `password_reset`；architecture §18 第 3 条标记为已回写；PRD §11 FR-2 的 Story 列补 1.4 与 `tests/test_ops_startup.py`；epics 1.2 元数据补 ADR-003；epics 3.3 末条 CSV 断言迁入 3.4。AC 总数保持 88 条、Story 仍 12 条，sprint-status.yaml 未重排。留待开工前的 2 条：1.2/1.3 用夹具造数、2.2 补「两个冲突 slot 都在 409 响应里」的断言（FR-5 要求返回全部冲突）。
 - 验证计划：1.1 的 build 首次跑 `pytest` 时确认重置密码写入 `action='password_reset'` 不触发 CHECK 约束；3.4 完成后确认「锁定行不出现在导出中」由 `tests/test_export_audit.py` 单独覆盖。
 - 证据：`evidence/D-007_2026-11-09-chat-gate-concerns.png`——规划对话中 Codex 给出 CONCERNS 结论与 7 条顾虑的那一屏；书面侧佐证为 `sprint-status.yaml` 的 `sprints`、`development_status` 块与本轮 5 处文档改动。
+## D-008 2026-11-09 独立复审发现 P0，裁定修 9 条、暂不修 10 条
+
+- 类型：实质修改（不是否决）
+- 触发：Story 1.1 完成后新开对话跑 `bmad-code-review`，复审给出 19 条发现（4 条 P1、15 条 P2，其中 F1 判 P0）
+- 智能体建议：按 19 条全量修复后再进入下一条 Story。
+- 判断与依据：19 条里只有 F1（匿名 CSRF 只验签名、不与客户端绑定，别人自取的 token 可替受害者提交登录表单）是安全缺陷，且现场 30 秒可演示；F2 违反 R2 硬规则、评审必查；F3/F4 是 AC 缺断言，属于「测试没测到」而不是「功能没做」；F7/F8/F9/F11/F12 是后续 Story 会踩的坑（2.2 的 409 裁决依赖 F8 的错误分类，2.1 首次写审计会踩 F9）。其余 10 条（枚举与限流、非 ASCII token 500、错误码查表、入参上界、测试加强、1.4 的 serve.py）不在核心演示路径上，4 周内修的收益低于风险。
+- 结果：修复范围定为 9 条——F1 改 double-submit（独立 `csrf` cookie，不用 session，否则 401 会带出 session cookie 撞 AC3）、F2 包进 `write_tx()`、F3/F4 补断言、F7 重置目标限 `student`、F8 改判 `sqlite_errorname`、F9 白名单补 `booking`/`equipment`、F11 `.gitignore` 补 `data/`、F12 删模板 `minlength`。暂不修的 10 条记入 retrospective「已知未修」。
+- 验证计划：修完 `pytest -q` 全绿，且新增「另一客户端用自己 token → 400」用例；`sprint-status.yaml` 保持 1.1 = review。
+- 证据：`evidence/D-008_2026-11-09-chat-review-findings.png`——复审对话中「审查结论 + R1–R8 核对 + P0/P1 列表」那一屏。

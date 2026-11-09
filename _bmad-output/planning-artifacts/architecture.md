@@ -401,7 +401,7 @@ pytest 输出与 `concurrency_demo` 的 stdout 归档到 `evidence/`，与 `D-00
 - **密码存储**：`generate_password_hash()`（Werkzeug 3 默认 scrypt）+ `check_password_hash()`；`user.password_hash` 是唯一存密码的地方。任何响应、日志、CSV 都不出现明文（NFR-4）。
 - **每请求校验**：`@login_required` 从 Cookie 取 `uid`，回库读该用户，比较 `pv == user.password_version` 且 `user.active`。角色以库中值为准，不信任 Cookie 里的 `role`。这样"重置密码"与"停用账号"都不需要额外的会话存储。
 - **授权分层**：`@login_required` → 未登录 401；`@admin_required` → 非管理员 403。两者都在路由函数第一行生效，不允许在模板里用 `{% if %}` 做权限判断。
-- **CSRF**：登录时生成随机 token 存入会话（登录成功时轮换，防会话固定），模板注入隐藏字段，POST 用常量时间比较校验；缺失或不符返回 400，且校验必须在业务写入之前。
+- **CSRF**：匿名表单用签名 double-submit——GET 下发独立 `csrf` cookie（`HttpOnly`、`SameSite=Lax`、`Secure=False`、12 小时），token 内嵌同一随机串并签名；POST 同时验签与「表单值 == cookie 值」（常量时间比较），缺失或不符返回 400，且校验在业务写入之前。登录成功后轮换 token 并转入会话，登出再轮换。匿名路径不写 session，否则登录失败会带出 session cookie，破坏 FR-1 的「失败不建会话」。**残余风险（已接受）**：HTTP 下若能注入 cookie（中间人）或控制子域，可凑出自洽的 (cookie, token) 组合；首版仅校园网内提供、无子域部署，与 `Secure=False` 一并在 PRD §7.3 接受；改 HTTPS 时同步启用 `Secure=True` 与 `__Host-` 前缀。
 - **重置密码是一个原子动作**：`UPDATE user SET password_hash=?, password_version=password_version+1` 与 `INSERT audit_log(action='password_reset')` 在同一事务提交；任一步失败则密码不变、日志也不写（FR-1、FR-8）。
 
 ### 8.2 被否决的备选

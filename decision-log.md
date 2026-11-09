@@ -45,3 +45,12 @@
 - 结果：修复范围定为 9 条——F1 改 double-submit（独立 `csrf` cookie，不用 session，否则 401 会带出 session cookie 撞 AC3）、F2 包进 `write_tx()`、F3/F4 补断言、F7 重置目标限 `student`、F8 改判 `sqlite_errorname`、F9 白名单补 `booking`/`equipment`、F11 `.gitignore` 补 `data/`、F12 删模板 `minlength`。暂不修的 10 条记入 retrospective「已知未修」。
 - 验证计划：修完 `pytest -q` 全绿，且新增「另一客户端用自己 token → 400」用例；`sprint-status.yaml` 保持 1.1 = review。
 - 证据：`evidence/D-008_2026-11-09-chat-review-findings.png`——复审对话中「审查结论 + R1–R8 核对 + P0/P1 列表」那一屏。
+## D-009 2026-11-09 否决改用 HTTPS + `__Host-` Cookie，按已接受风险处置
+
+- 类型：否决
+- 触发：Story 1.1 增量复审，指出 double-submit 在 HTTP 下 cookie 可被注入，建议改 `Secure=True` + `__Host-` 前缀
+- 智能体建议：把 CSRF cookie 改为 `Secure=True` 并加 `__Host-` 前缀，或把 token 绑到会话标识。
+- 判断与依据：`Secure=True` 与 `__Host-` 都强制要求 HTTPS，而首版是校园网 HTTP——ADR-004 明确 `Secure=False`，PRD §7.3 已把「无 HTTPS、无证书」列为接受风险。照建议改，Cookie 在 HTTP 下不会下发，登录直接不能用：用一个必然坏掉的功能换一个需要中间人或子域才能触发的理论风险，不成立。
+- 结果：不改代码；ADR-004 §8.1 的 CSRF 条目按实际实现（匿名 double-submit + 登录后转会话）重写，并把注入风险写成「已接受」，注明改 HTTPS 时同步启用 `Secure=True` 与 `__Host-`。复审第 2 条（登录失败不带 session cookie）确认通过，无动作。
+- 验证计划：`tests/test_auth_login.py` 的 CSRF 用例保持全绿；演示时用 HTTP 访问，若评审问起，指 ADR-004 的残余风险段。
+- 证据：本条无对话截图。可倒查：`architecture.md` §8.1 CSRF 条目、`PRD.md` §7.3 已接受风险清单、`tests/test_auth_login.py` 的 CSRF 用例。

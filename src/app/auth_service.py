@@ -39,6 +39,8 @@ def register(conn, *, student_no, password):
                 created_at=now_utc(),
             )
     except sqlite3.IntegrityError as error:
+        if getattr(error, "sqlite_errorname", None) != "SQLITE_CONSTRAINT_UNIQUE":
+            raise
         if "user.student_no" not in str(error):
             raise
         raise Conflict("该学号已注册") from None
@@ -60,6 +62,8 @@ def reset_password(conn, *, target_user_id, actor_id, default_password):
         target = user_repo.get_by_id(conn, target_user_id)
         if target is None:
             raise NotFound("用户不存在")
+        if target["role"] != "student":
+            raise Validation("只能重置学生账号的密码")
 
         version_before = target["password_version"]
         if user_repo.update_password(conn, user_id=target_user_id, password_hash=password_hash) != 1:

@@ -12,7 +12,7 @@ from src.data.db import close_db, initialize
 from src.web.admin import bp as admin_bp
 from src.web.auth import bp as auth_bp
 from src.web.catalog import bp as catalog_bp
-from src.web.csrf import current_csrf_token
+from src.web.csrf import current_csrf_token, set_csrf_cookie
 from src.web.errors import register_error_handlers
 
 
@@ -43,6 +43,7 @@ def create_app() -> Flask:
 
     @app.after_request
     def log_request(response):
+        set_csrf_cookie(response)
         user = g.get("user")
         app.logger.info(
             "%s %s %s user=%s",

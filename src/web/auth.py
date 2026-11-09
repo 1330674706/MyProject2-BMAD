@@ -93,4 +93,5 @@ def login_submit():
 def logout():
     validate_csrf()
     session.clear()
+    rotate_csrf_token()
     return redirect(url_for("auth.login_form"), code=303)

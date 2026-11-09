@@ -9,6 +9,8 @@ import json
 
 ALLOWED_FIELDS = {
     "user": frozenset({"student_no", "role", "active", "password_version"}),
+    "booking": frozenset({"id", "owner_id", "equipment_id", "slots", "created_at", "updated_at"}),
+    "equipment": frozenset({"id", "name", "open_start", "open_end", "active", "slots"}),
 }
 
 

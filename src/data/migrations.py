@@ -5,7 +5,24 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
+
+from src.data.tx import write_tx
+
+
+def _statements(script: str):
+    buffer = ""
+    for char in script:
+        buffer += char
+        if char == ";" and sqlite3.complete_statement(buffer):
+            statement = buffer.strip()
+            if statement:
+                yield statement
+            buffer = ""
+    remainder = buffer.strip()
+    if remainder:
+        yield remainder
 
 
 def apply_migrations(conn, directory) -> None:
@@ -15,7 +32,8 @@ def apply_migrations(conn, directory) -> None:
         if version <= current:
             continue
         script = path.read_text(encoding="utf-8")
-        conn.executescript(
-            f"BEGIN IMMEDIATE;\n{script}\nPRAGMA user_version = {version};\nCOMMIT;"
-        )
+        with write_tx(conn):
+            for statement in _statements(script):
+                conn.execute(statement)
+            conn.execute(f"PRAGMA user_version = {version}")
         current = version

@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+/data/
+*.db
+.pytest_tmp*/
+pytest_tmp_run/
+_bmad/render/

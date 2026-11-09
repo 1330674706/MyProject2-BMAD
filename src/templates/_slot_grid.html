@@ -1,0 +1,8 @@
+<ol class="slot-grid">
+  {% for cell in grid.cells %}
+  <li class="slot-cell" data-state="{{ cell.state }}" data-slot="{{ cell.start }}">
+    <span class="slot-time">{{ cell.local_time }}</span>
+    <span class="slot-label">{{ cell.label }}</span>
+  </li>
+  {% endfor %}
+</ol>

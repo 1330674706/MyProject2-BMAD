@@ -75,3 +75,84 @@ button {
 }
 
 .inline-form input { width: 6.5rem; }
+
+.slot-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.slot-filter select,
+.slot-filter input {
+  min-width: 9rem;
+}
+
+.slot-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.slot-cell {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.92rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.slot-cell[data-state="free"] { border-color: #86efac; }
+.slot-cell[data-state="booked_by_self"] { border-color: #93c5fd; background: #eff6ff; }
+.slot-cell[data-state="booked_by_other"] { border-color: #fca5a5; background: #fef2f2; }
+.slot-cell[data-state="locked"] { border-color: #fcd34d; background: #fffbeb; }
+.slot-cell[data-state="closed_past"] { color: #6b7280; background: #f3f4f6; }
+.slot-cell[data-state="closed_window"] { color: #6b7280; background: #f3f4f6; }
+
+.slot-label { color: #52606d; }
+
+.slot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: #52606d;
+}
+
+.slot-key::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.3rem;
+  vertical-align: -1px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+.slot-key.is-free::before { border-color: #86efac; }
+.slot-key.is-booked_by_self::before { border-color: #93c5fd; }
+.slot-key.is-booked_by_other::before { border-color: #fca5a5; }
+.slot-key.is-locked::before { border-color: #fcd34d; }
+.slot-key.is-closed_past::before,
+.slot-key.is-closed_window::before { background: #f3f4f6; }
+
+@media (max-width: 480px) {
+  .page { padding: 1rem 0.75rem 2rem; }
+  .slot-filter { display: grid; }
+  .slot-filter select,
+  .slot-filter input { width: 100%; }
+  .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .slot-cell { font-size: 0.85rem; }
+  .inline-form input { width: 100%; }
+}

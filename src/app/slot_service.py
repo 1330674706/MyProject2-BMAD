@@ -1,16 +1,76 @@
-"""slot 派生：开放时间到 UTC slot 集合的唯一生产者（FR-2、ADR-005）。
+"""slot 派生与六态视图：时间形状与占用状态的唯一生产者（FR-2、FR-3、ADR-005）。
 
-slot 是派生量，不建表；本模块只负责时间形状，不读取占用状态。
+slot 是派生量，不建表；`build_grid()` 只负责时间，`build_slot_grid()` 在其上叠加占用状态。
+状态枚举是 2.1 与 3.1 的共同契约，只允许六个值。
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import timedelta
 
-from src.core.errors import Validation
-from src.core.timeutil import local_at, local_to_utc
+from src.core.errors import NotFound, Validation
+from src.core.timeutil import add_days, local_at, local_to_utc, now_utc, utc_to_local
+from src.data import equipment_repo, occupancy_repo
 
 SLOT_MINUTES = 30
+WINDOW_DAYS = 7
+
+SIX_STATES = frozenset(
+    {
+        "free",
+        "booked_by_self",
+        "booked_by_other",
+        "locked",
+        "closed_past",
+        "closed_window",
+    }
+)
+
+STATE_LABELS = {
+    "free": "空闲",
+    "booked_by_self": "我的预约",
+    "booked_by_other": "已被占用",
+    "locked": "已锁定",
+    "closed_past": "已开始",
+    "closed_window": "超出可约窗口",
+}
+
+
+@dataclass(frozen=True)
+class SlotCell:
+    start: str
+    local_time: str
+    state: str
+
+    def __post_init__(self) -> None:
+        if self.state not in SIX_STATES:
+            raise ValueError(f"未知 slot 状态: {self.state}")
+
+    @property
+    def label(self) -> str:
+        return STATE_LABELS[self.state]
+
+
+@dataclass(frozen=True)
+class SlotGrid:
+    equipment_id: str
+    day: str
+    open_start: str
+    open_end: str
+    cells: tuple[SlotCell, ...]
+
+    def __iter__(self):
+        return iter(self.cells)
+
+    def __len__(self) -> int:
+        return len(self.cells)
+
+    def __getitem__(self, key):
+        for cell in self.cells:
+            if key in (cell.local_time, cell.start):
+                return cell
+        raise KeyError(key)
 
 
 def build_grid(open_start: str, open_end: str, day: str) -> list[str]:
@@ -29,3 +89,51 @@ def build_grid(open_start: str, open_end: str, day: str) -> list[str]:
         slots.append(local_to_utc(cursor))
         cursor += step
     return slots
+
+
+def _resolve_state(start, now_text, window_end, row, viewer_id) -> str:
+    if start <= now_text:
+        return "closed_past"
+    if start > window_end:
+        return "closed_window"
+    if row is None:
+        return "free"
+    if row["kind"] == "lock":
+        return "locked"
+    if row["owner_id"] == viewer_id:
+        return "booked_by_self"
+    return "booked_by_other"
+
+
+def build_slot_grid(conn, *, equipment_id, day, viewer_id, now=None) -> SlotGrid:
+    """读取设备开放窗口与当天占用，生成六态只读视图对象。"""
+    if not equipment_id:
+        raise Validation("必须选择设备")
+
+    now_text = now or now_utc()
+    day_text = day or utc_to_local(now_text).date().isoformat()
+
+    equipment = equipment_repo.get_by_id(conn, equipment_id)
+    if equipment is None or not equipment["active"]:
+        raise NotFound("设备不存在")
+
+    slots = build_grid(equipment["open_start"], equipment["open_end"], day_text)
+    rows = occupancy_repo.list_for_range(conn, equipment_id, slots[0], slots[-1])
+    occupied = {row["slot_start"]: row for row in rows}
+    window_end = add_days(now_text, WINDOW_DAYS)
+
+    cells = tuple(
+        SlotCell(
+            start=start,
+            local_time=utc_to_local(start).strftime("%H:%M"),
+            state=_resolve_state(start, now_text, window_end, occupied.get(start), viewer_id),
+        )
+        for start in slots
+    )
+    return SlotGrid(
+        equipment_id=equipment_id,
+        day=day_text,
+        open_start=equipment["open_start"],
+        open_end=equipment["open_end"],
+        cells=cells,
+    )

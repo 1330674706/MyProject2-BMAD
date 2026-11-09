@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 UTC_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -14,6 +14,16 @@ LOCAL_TZ = ZoneInfo("Asia/Shanghai")
 
 def now_utc() -> str:
     return datetime.now(timezone.utc).strftime(UTC_FORMAT)
+
+
+def parse_utc(value: str) -> datetime:
+    """20 字符 UTC 文本转带 UTC 时区的 datetime。"""
+    return datetime.strptime(value, UTC_FORMAT).replace(tzinfo=timezone.utc)
+
+
+def add_days(value: str, days: int) -> str:
+    """UTC 文本加自然天数，返回新的 20 字符 UTC 文本。"""
+    return (parse_utc(value) + timedelta(days=days)).strftime(UTC_FORMAT)
 
 
 def local_at(day: str, wallclock: str) -> datetime:
@@ -36,4 +46,4 @@ def local_to_utc(local_dt: datetime) -> str:
 
 def utc_to_local(value: str) -> datetime:
     """20 字符 UTC 文本转 Asia/Shanghai 本地时刻。"""
-    return datetime.strptime(value, UTC_FORMAT).replace(tzinfo=timezone.utc).astimezone(LOCAL_TZ)
+    return parse_utc(value).astimezone(LOCAL_TZ)

@@ -64,3 +64,12 @@
 - 结果：新增 `src/serve.py`、`src/web/health.py`、`src/seed.py`、`seed/equipment.csv`，改 `app.py`、`config.py`、`equipment_repo.py`、`equipment_service.py`；种子复用 1.2 窗口校验、单事务 upsert、变更写审计；未碰 2.1 与 `occupancy`
 - 验证计划：`tests/test_ops_startup.py` 先红后绿（7 → 16 passed），全量 73 passed；`python -m src.serve` 缺任一必需 env 时非 0 退出且不监听
 - 证据：`_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md` 的 Implementation Notes 与 Review Triage Log；`deferred-work.md` 的 6 条待办
+## D-010 2026-11-09 复审 12 条只批 3 条，7 天窗口由「首格」改为「逐格」
+
+- 类型：实质修改（不是否决）
+- 触发：Story 2.1 独立复审给出 12 条发现（2 条 P1、10 条 P2，无 P0），建议按优先级全修
+- 智能体建议：先由规划裁决 F1 的两套 7 天语义，再补 F2 的 409 测试，F3/F4/F6 一并处理。
+- 判断与依据：只有 3 条影响演示路径——F1 写入只看首格、页面逐格判定，同一 slot 一页说不能约、接口却接受，评审一试就中；F2 的 409 分支一条测试都没有，而 2.2 整个故事讲的就是 409；F5 用事务前快照拼文案，可能列出已不存在的冲突行，改一行即可。其余 9 条（事务外取 now 的 1 秒漂移、Unicode 数字正则、`database is locked` 映射、倒序提交、隐藏 date 不校验、400 重渲染丢网格、预检多一次查询、常量重复定义、红灯未归档）都落在边界时序或体验细节，不进入 4 周内的演示与答辩路径。
+- 结果：F1 选「逐格判定」这一侧——网格已是逐格，改写入侧更省事且与用户直觉一致；PRD FR-4 由「首个 slot 的开始时间在未来 7 天内」改为「每个 slot 的开始时间都在未来 7 天内（首格不得早于当前时刻）」，验收项同步改为「任一 slot 超 7 天返回 4xx」。F2 补 3 条断言级测试（第 3 格冲突整单不变、3 个 lock 冲突全部列出、冲突在第 5 格时前 4 格未落库）。F5 删除 `or pre_conflicts`，冲突列表只取 ROLLBACK 后的重查结果，重查为空时返回通用文案。其余 9 条记入 `deferred-work.md`。
+- 验证计划：修完 `pytest -q` 全绿且新增 3 条 409 用例；临时库手工构造「第 3 格已占」确认 `(booking, occupancy)` 计数不变。
+- 证据：`evidence/D-010_2026-11-09-chat-triage-2-1.png`——本轮对话中「为什么只修这 3 条」与 PRD 措辞改动同屏；书面侧为 `PRD.md` FR-4 修改前后文本、`deferred-work.md` 的 9 条记录。

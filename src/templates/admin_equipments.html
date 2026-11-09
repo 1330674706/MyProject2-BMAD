@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}设备维护{% endblock %}
+{% block heading %}设备维护{% endblock %}
+{% block content %}
+{% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="{{ url_for('admin.create_equipment') }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>设备名称<input type="text" name="name" required></label>
+  <label>开放开始<input type="text" name="open_start" value="08:00" required></label>
+  <label>开放结束<input type="text" name="open_end" value="22:00" required></label>
+  <button type="submit">新增设备</button>
+</form>
+
+{% if equipments %}
+<table class="data-table">
+  <thead>
+    <tr><th>名称</th><th>开放时间</th><th>保存</th></tr>
+  </thead>
+  <tbody>
+    {% for equipment in equipments %}
+    <tr>
+      <td>{{ equipment.name }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin.update_window', id=equipment.id) }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="text" name="name" value="{{ equipment.name }}" aria-label="设备名称" required>
+          <input type="text" name="open_start" value="{{ equipment.open_start }}" required>
+          <input type="text" name="open_end" value="{{ equipment.open_end }}" required>
+          <button type="submit">保存</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">暂无设备。</p>
+{% endif %}
+{% endblock %}

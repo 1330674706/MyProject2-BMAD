@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}设备清单{% endblock %}
+{% block heading %}设备清单{% endblock %}
+{% block content %}
+{% if admin_url %}<p class="hint"><a href="{{ admin_url }}">设备维护</a></p>{% endif %}
+{% if equipments %}
+<table class="data-table">
+  <thead>
+    <tr><th>名称</th><th>开放开始</th><th>开放结束</th></tr>
+  </thead>
+  <tbody>
+    {% for equipment in equipments %}
+    <tr>
+      <td>{{ equipment.name }}</td>
+      <td>{{ equipment.open_start }}</td>
+      <td>{{ equipment.open_end }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">暂无已开放设备。</p>
+{% endif %}
+{% endblock %}

@@ -27,3 +27,12 @@
 - 结果：E2 补为 2.1–2.4，全项目 3 Epic / 12 Story / 88 条 AC；2.4 只交付 `app/slot_rules.validate(mode="create"|"edit")` 与服务层替换语义，3.2 只接路由与表单，消除「3.2 才能测 2.4」的倒挂；依赖图所有边均为小号→大号。
 - 验证计划：2.4 的 6 组 AC 全部带 `→ assert ...`，Story 2.4 完成后跑 `pytest tests/test_slot_rules.py`，其中「改到与自身旧集合相交」用例必须返回 303 且 `booking_id` 不变、「目标含他人占用」用例必须返回 409 且原 `occupancy` 逐行相等。
 - 证据：本条无对话截图。可倒查的书面证据：`epics.md` 第 2.4 节「为什么 2.4 值得独立成 Story」5 条理由、文末「PRD §11 回写记录（2026-11-05 已同步）」，以及 PRD §11 表内 FR-4/FR-7 行已并入 2.4。
+## D-007 2026-11-09 接受 CONCERNS 门禁，逐条裁定 7 条顾虑
+
+- 类型：实质修改（不是否决）
+- 触发：`bmad-sprint-planning` 实现就绪检查，结论 CONCERNS（可开工，7 条顾虑，其中 2 条落在 Sprint 1）
+- 智能体建议：CONCERNS 放行，Sprint 1 顺序 1.1 → 1.2 → 1.4 → 1.3 → 2.1 → 2.2。
+- 判断与依据：7 条里只有 1 条会在写代码时直接失败——ADR-004 正文写 `action='reset_password'`，而 §10.2 的 CHECK 与 Story 3.4 的 AC 都是 `password_reset`，DDL 会当场拒绝插入；另 3 条是文档漂移（FR-2 归属只列 1.2、Story 1.2 元数据漏 ADR-003、architecture §18 仍写「PRD §11 需补 ADR-005」）；1 条是 Story 内前向依赖（3.3 最后一条 AC 测 CSV 导出，导出在 3.4 才交付）；剩下 2 条不需要动文档（1.2/1.3 的 AC 用测试夹具直接造占用行；3.2 用第三个学生当观察者即可）。因笔误打回重跑整个规划，成本远高于直接改 5 处。
+- 结果：当场改 5 处——architecture §8.1 的 action 名改为 `password_reset`；architecture §18 第 3 条标记为已回写；PRD §11 FR-2 的 Story 列补 1.4 与 `tests/test_ops_startup.py`；epics 1.2 元数据补 ADR-003；epics 3.3 末条 CSV 断言迁入 3.4。AC 总数保持 88 条、Story 仍 12 条，sprint-status.yaml 未重排。留待开工前的 2 条：1.2/1.3 用夹具造数、2.2 补「两个冲突 slot 都在 409 响应里」的断言（FR-5 要求返回全部冲突）。
+- 验证计划：1.1 的 build 首次跑 `pytest` 时确认重置密码写入 `action='password_reset'` 不触发 CHECK 约束；3.4 完成后确认「锁定行不出现在导出中」由 `tests/test_export_audit.py` 单独覆盖。
+- 证据：本条无对话截图。可倒查：`sprint-status.yaml` 的 `sprints` 与 `development_status` 块、本轮 5 处文档改动（architecture.md §8.1/§18、PRD.md §11 FR-2 行、epics.md 1.2 元数据与 3.3→3.4 的 AC 迁移）。

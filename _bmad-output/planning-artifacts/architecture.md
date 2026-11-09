@@ -402,7 +402,7 @@ pytest 输出与 `concurrency_demo` 的 stdout 归档到 `evidence/`，与 `D-00
 - **每请求校验**：`@login_required` 从 Cookie 取 `uid`，回库读该用户，比较 `pv == user.password_version` 且 `user.active`。角色以库中值为准，不信任 Cookie 里的 `role`。这样"重置密码"与"停用账号"都不需要额外的会话存储。
 - **授权分层**：`@login_required` → 未登录 401；`@admin_required` → 非管理员 403。两者都在路由函数第一行生效，不允许在模板里用 `{% if %}` 做权限判断。
 - **CSRF**：登录时生成随机 token 存入会话（登录成功时轮换，防会话固定），模板注入隐藏字段，POST 用常量时间比较校验；缺失或不符返回 400，且校验必须在业务写入之前。
-- **重置密码是一个原子动作**：`UPDATE user SET password_hash=?, password_version=password_version+1` 与 `INSERT audit_log(action='reset_password')` 在同一事务提交；任一步失败则密码不变、日志也不写（FR-1、FR-8）。
+- **重置密码是一个原子动作**：`UPDATE user SET password_hash=?, password_version=password_version+1` 与 `INSERT audit_log(action='password_reset')` 在同一事务提交；任一步失败则密码不变、日志也不写（FR-1、FR-8）。
 
 ### 8.2 被否决的备选
 
@@ -726,4 +726,4 @@ flowchart LR
 
 1. **会话有效期 12 小时**是否为合适值（学生可能晚上预约、次日到场）。改这一项需同时调 `PERMANENT_SESSION_LIFETIME` 与登录前端的提示文案，不影响其他 ADR。
 2. **审计日志保留多久**。当前不清理；若一年后行数影响查询，再加归档策略。
-3. **PRD §11 溯源表需要补一行 ADR-005**。该表当前只列到 ADR-004；本文新增了时区决策，回写后两边编号才一致。
+3. ~~PRD §11 溯源表需要补一行 ADR-005~~——已于 2026-11-05 回写，FR-3/4/6/7/8 的 ADR 列均含 ADR-005；此条保留作已关闭记录。

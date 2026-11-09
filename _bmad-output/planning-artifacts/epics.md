@@ -6,7 +6,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/architecture.md
   - decision-log.md
 created: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-09
 ---
 
 # 实验室设备预约系统 — Epic Breakdown
@@ -168,7 +168,7 @@ As a 管理员 / 学生,
 I want 维护每台设备的名称与每日开放时间，并让系统据此派生 30 分钟 slot,
 So that 学生看到的每一个可约格都对应设备真实可用的时间，而不是管理员手工画的格子。
 
-**元数据**：FR-2；ADR-002、ADR-005；前置：1.1；预估：M（0.75 天）；测试：`tests/test_equipment_catalog.py`
+**元数据**：FR-2；ADR-002、ADR-003、ADR-005；前置：1.1；预估：M（0.75 天）；测试：`tests/test_equipment_catalog.py`
 
 **Acceptance Criteria:**
 
@@ -648,11 +648,6 @@ So that 设备维修、校准这类"不能约但不是预约"的状态不会被�
 **Then** 两条记录 `action` 分别为 `lock`、`unlock`，`target_type == "equipment"`，`after_json["slots"]` 均包含该 `slot_start`
 → `assert [(r.action, r.target_type) for r in rows] == [("lock","equipment"), ("unlock","equipment")] and all(slot in json.loads(r.after_json)["slots"] for r in rows)`
 
-**Given** 本周存在 1 条锁定行与 2 条预约行
-**When** 管理员导出该周 CSV
-**Then** CSV 数据行数为 2，锁定行不出现在导出中
-→ `assert len(csv_data_rows) == 2 and lock_slot_local not in [r["slot 开始"] for r in csv_rows]`
-
 ### Story 3.4: 自然周 CSV 导出与追加式操作日志
 
 As a 管理员,
@@ -682,6 +677,11 @@ So that 周表能作为唯一的人工归档，出问题时也追得到源头。
 **When** 分别导出 `W` 与 `W-1`
 **Then** 周一 `00:00` 只出现在 `W` 的 CSV 中，`W-1` 行数不含它
 → `assert mon_slot in rows(W) and mon_slot not in rows(W-1)`
+
+**Given** 本周存在 1 条锁定行与 2 条预约行
+**When** 管理员导出该周 CSV
+**Then** CSV 数据行数为 2，锁定行不出现在导出中
+→ `assert len(csv_data_rows) == 2 and lock_slot_local not in [r["slot 开始"] for r in csv_rows]`
 
 **Given** 依次完成预约、取消、改单、锁定、重置密码五类动作
 **When** `GET /admin/audit`

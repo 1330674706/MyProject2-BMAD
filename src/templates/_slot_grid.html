@@ -1,10 +1,11 @@
 <ol class="slot-grid">
   {% for cell in grid.cells %}
-  <li class="slot-cell" data-state="{{ cell.state }}" data-slot="{{ cell.start }}">
+  <li class="slot-cell{% if cell.conflicted %} is-conflict{% endif %}" data-state="{{ cell.state }}" data-slot="{{ cell.start }}" data-conflict="{{ '1' if cell.conflicted else '0' }}">
     <span class="slot-time">{{ cell.local_time }}</span>
     <span class="slot-label">{{ cell.label }}</span>
+    {% if cell.conflicted %}<span class="slot-conflict">已失效</span>{% endif %}
     {% if selectable_form and cell.selectable %}
-    <input type="checkbox" name="slot" value="{{ cell.start }}" aria-label="{{ cell.local_time }} 开始预约">
+    <input type="checkbox" name="slot" value="{{ cell.start }}" aria-label="{{ cell.local_time }} 开始预约"{% if cell.selected %} checked{% endif %}>
     {% endif %}
   </li>
   {% endfor %}

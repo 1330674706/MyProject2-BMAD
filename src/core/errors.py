@@ -26,7 +26,11 @@ class NotFound(AppError):
 
 
 class Conflict(AppError):
-    pass
+    """业务冲突；`conflict_slots` 只用于 409 同页重渲染时标出失效格。"""
+
+    def __init__(self, message: str, conflict_slots=()):
+        super().__init__(message)
+        self.conflict_slots = tuple(conflict_slots)
 
 
 class Unavailable(AppError):

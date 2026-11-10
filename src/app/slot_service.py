@@ -42,6 +42,8 @@ class SlotCell:
     start: str
     local_time: str
     state: str
+    conflicted: bool = False
+    selected: bool = False
 
     def __post_init__(self) -> None:
         if self.state not in SIX_STATES:
@@ -109,8 +111,21 @@ def _resolve_state(start, now_text, window_end, row, viewer_id) -> str:
     return "booked_by_other"
 
 
-def build_slot_grid(conn, *, equipment_id, day, viewer_id, now=None) -> SlotGrid:
-    """读取设备开放窗口与当天占用，生成六态只读视图对象。"""
+def build_slot_grid(
+    conn,
+    *,
+    equipment_id,
+    day,
+    viewer_id,
+    now=None,
+    conflicted_slots=(),
+    selected_slots=(),
+) -> SlotGrid:
+    """读取设备开放窗口与当天占用，生成六态只读视图对象。
+
+    `conflicted_slots` / `selected_slots` 只用于 409 同页重渲染的展示标记，
+    不参与任何状态判定；六个合法状态不变。
+    """
     if not equipment_id:
         raise Validation("必须选择设备")
 
@@ -125,12 +140,16 @@ def build_slot_grid(conn, *, equipment_id, day, viewer_id, now=None) -> SlotGrid
     rows = occupancy_repo.list_for_range(conn, equipment_id, slots[0], slots[-1])
     occupied = {row["slot_start"]: row for row in rows}
     window_end = add_days(now_text, WINDOW_DAYS)
+    conflicted = frozenset(conflicted_slots)
+    selected = frozenset(selected_slots)
 
     cells = tuple(
         SlotCell(
             start=start,
             local_time=utc_to_local(start).strftime("%H:%M"),
             state=_resolve_state(start, now_text, window_end, occupied.get(start), viewer_id),
+            conflicted=start in conflicted,
+            selected=start in selected,
         )
         for start in slots
     )

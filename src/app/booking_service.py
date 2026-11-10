@@ -34,11 +34,11 @@ def _conflict_text(rows) -> str:
 
 
 def create_booking(conn, user_id, equipment_id, slots, now=None):
-    now_text = now or now_utc()
     booking_id = new_id()
     validated = []
     try:
         with write_tx(conn):
+            now_text = now or now_utc()
             equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
             if equipment is None or not equipment["active"]:
                 raise Validation("设备不存在")
@@ -87,5 +87,8 @@ def create_booking(conn, user_id, equipment_id, slots, now=None):
         conflicts = occupancy_repo.select_taken(conn, equipment_id, validated)
         if not conflicts:
             raise Conflict("所选 slot 已被占用，请刷新后重试") from None
-        raise Conflict(_conflict_text(conflicts)) from None
+        raise Conflict(
+            _conflict_text(conflicts),
+            [row["slot_start"] for row in conflicts],
+        ) from None
     return booking_id

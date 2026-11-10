@@ -11,6 +11,10 @@ from src.core.timeutil import parse_utc, utc_to_local
 SLOT_MINUTES = 30
 MAX_SLOTS = 8
 WINDOW_DAYS = 7
+CANCEL_LEAD_HOURS = 2
+CANCEL_STATUS_CANCELLABLE = "cancellable"
+CANCEL_STATUS_STARTED = "started"
+CANCEL_STATUS_PAST_DEADLINE = "past_deadline"
 
 UTC_SLOT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$")
 
@@ -59,3 +63,26 @@ def validate_slots(equipment, slots, now):
         if moment > window_end:
             raise Validation("所选 slot 超出可约窗口")
     return list(slots)
+
+
+def cancel_status(first_slot, now):
+    """取消状态：cancellable / started / past_deadline（FR-6）。"""
+    try:
+        first_moment = parse_utc(first_slot) if isinstance(first_slot, str) else first_slot
+        now_moment = parse_utc(now) if isinstance(now, str) else now
+    except ValueError:
+        raise Validation("slot 时刻不存在") from None
+    if first_moment <= now_moment:
+        return CANCEL_STATUS_STARTED
+    if first_moment - now_moment < timedelta(hours=CANCEL_LEAD_HOURS):
+        return CANCEL_STATUS_PAST_DEADLINE
+    return CANCEL_STATUS_CANCELLABLE
+
+
+def validate_cancellable(first_slot, now):
+    """取消截止：首个 slot 开始前至少 2 小时（FR-6）。"""
+    status = cancel_status(first_slot, now)
+    if status == CANCEL_STATUS_STARTED:
+        raise Validation("预约已开始，无法取消")
+    if status == CANCEL_STATUS_PAST_DEADLINE:
+        raise Validation(f"距首个 slot 开始不足 {CANCEL_LEAD_HOURS} 小时，无法取消")

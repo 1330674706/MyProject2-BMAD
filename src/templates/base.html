@@ -9,6 +9,12 @@
 <body>
   <header class="site-header">
     <a class="brand" href="{{ url_for('auth.login_form') }}">实验室设备预约</a>
+    {% if g.get('user') %}
+    <nav class="site-nav">
+      <a href="{{ url_for('catalog.equipments') }}">设备清单</a>
+      <a href="{{ url_for('bookings.mine') }}">我的预约</a>
+    </nav>
+    {% endif %}
   </header>
   <main class="page">
     <h1>{% block heading %}{% endblock %}</h1>

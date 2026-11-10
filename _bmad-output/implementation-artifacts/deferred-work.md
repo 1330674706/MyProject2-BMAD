@@ -53,3 +53,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
   summary: 409 整页提示时给提交过但无法定位的格子加“未验证”标记，而不是只显示 free。
   evidence: 复审意见认为 page 作用域下提交的 slot 仍按 `free` 渲染、缺少可操作线索；六态枚举是 1.3/3.1 的共同契约，新增第七种视觉状态需先改 `epics.md` 并经人工确认，故本次只保留整页提示与网格。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-cancel-booking.md`
+  summary: 为页面补登出入口，并让匿名页面不再渲染仅登录后可达的导航。
+  evidence: `POST /logout` 自 1.1 起就没有模板引用，属既有缺口；本次只修了匿名导航 401（`base.html` 按 `g.user` 渲染）。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-cancel-booking.md`
+  summary: 证明并发取消同一 `booking_id` 恰有一次 303、一次 404 且只写 1 条审计。
+  evidence: FR-6 与 Story 2.3 AC 只要求重复取消 404 与不写审计，未要求并发证据；需要 `Barrier` 双进程驱动，超出本 Story 测试范围。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-cancel-booking.md`
+  summary: 明确“我的预约”的排序契约并写成断言（含同秒创建的次序）。
+  evidence: `LIST_BY_OWNER` 按 `created_at DESC, id` 排序，而 `created_at` 只到秒，同秒创建时退化为 uuid 顺序；FR-6 与 AC 均未规定顺序，需规划确认后再固化。

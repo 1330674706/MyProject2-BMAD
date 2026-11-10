@@ -2,16 +2,42 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, g, redirect, request, url_for
+from flask import Blueprint, g, redirect, render_template, request, url_for
 
 from src.app import booking_service, equipment_service, slot_service
-from src.core.errors import Conflict, NotFound, Validation
+from src.core.errors import AppError, Conflict, NotFound, Validation
 from src.data.db import get_db
 from src.web.auth import login_required
 from src.web.csrf import validate_csrf
 from src.web.errors import render_error
 
 bp = Blueprint("bookings", __name__)
+
+
+@bp.get("/bookings/mine")
+@login_required
+def mine():
+    return render_template(
+        "bookings_mine.html",
+        bookings=booking_service.list_my_bookings(get_db(), g.user["id"]),
+    )
+
+
+@bp.post("/bookings/<id>/cancel")
+@login_required
+def cancel(id):
+    validate_csrf()
+    try:
+        booking_service.cancel_booking(get_db(), g.user["id"], id)
+    except Validation as error:
+        return render_error(
+            error,
+            "bookings_mine.html",
+            bookings=booking_service.list_my_bookings(get_db(), g.user["id"]),
+        )
+    except AppError as error:
+        return render_error(error)
+    return redirect(url_for("bookings.mine"), code=303)
 
 
 def _render_slots(error, *, equipment_id, day, grid=None):

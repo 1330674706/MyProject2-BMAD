@@ -18,9 +18,17 @@ body {
   padding: 0.75rem 1rem;
   background: #fff;
   border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .brand { color: var(--ink); font-weight: 600; text-decoration: none; }
+
+.site-nav { display: flex; gap: 0.9rem; }
+.site-nav a { color: var(--accent); font-size: 0.92rem; text-decoration: none; }
 
 .page { max-width: 32rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
 
@@ -46,6 +54,8 @@ button {
   border-radius: 6px;
   cursor: pointer;
 }
+
+button:disabled { background: #6b7280; cursor: not-allowed; }
 
 .alert {
   padding: 0.6rem 0.75rem;
@@ -85,6 +95,8 @@ button {
 }
 
 .inline-form input { width: 6.5rem; }
+
+.slot-list { margin: 0; padding-left: 1rem; }
 
 .slot-filter {
   display: flex;

@@ -26,6 +26,14 @@ def insert_occupancy(conn, equipment_id, slots, booking_id, kind, *, created_at)
     )
 
 
+def list_slots_for_booking(conn, booking_id):
+    """按 slot_start 升序返回该预约的全部占用行。"""
+    return conn.execute(
+        "SELECT slot_start FROM occupancy WHERE booking_id = ? ORDER BY slot_start",
+        (booking_id,),
+    ).fetchall()
+
+
 def select_taken(conn, equipment_id, slots):
     """返回请求中已被占用的行；只用于生成 409 文案，不参与放行或拒绝。"""
     if not slots:

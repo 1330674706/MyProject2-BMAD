@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}我的预约{% endblock %}
+{% block heading %}我的预约{% endblock %}
+{% block content %}
+{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+{% if bookings %}
+<table class="data-table booking-table">
+  <thead>
+    <tr><th scope="col">设备</th><th scope="col">时段</th><th scope="col">状态</th><th scope="col">操作</th></tr>
+  </thead>
+  <tbody>
+    {% for booking in bookings %}
+    <tr data-booking-id="{{ booking.id }}">
+      <td>{{ booking.equipment_name }}<span class="hint">（{{ booking.equipment_id }}）</span></td>
+      <td>
+        <ul class="slot-list">
+          {% for slot in booking.slots %}<li>{{ slot }}</li>{% endfor %}
+        </ul>
+      </td>
+      <td>{{ booking.status_label }}</td>
+      <td>
+        <form class="inline-form" method="post" action="{{ url_for('bookings.cancel', id=booking.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" aria-label="取消 {{ booking.equipment_name }} 的预约"{% if not booking.cancellable %} disabled{% endif %}>取消预约</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="hint">暂无预约。</p>
+{% endif %}
+<p><a href="{{ url_for('catalog.equipments') }}">返回设备清单</a></p>
+{% endblock %}

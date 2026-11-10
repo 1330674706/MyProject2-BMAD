@@ -2,7 +2,7 @@
 title: 实验室设备预约系统
 status: reviewed
 created: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-10
 ---
 
 # PRD: 实验室设备预约系统
@@ -356,6 +356,8 @@ updated: 2026-11-04
 ## 11. 需求溯源
 
 下表把 8 条 FR 索引到 Brief、ADR、Story 与测试。ADR/Story/Test 为当前计划编号；架构与故事拆分完成后，若编号或路径变化，以实际文件为准并同步更新本表。每次新增、重命名或拆分 ADR、Story、测试，都必须回头更新这里，否则视为文档漂移。ADR-005（UTC 定长存储）在架构评审后补入，凡涉及 slot 时间比较、展示或导出的 FR 均需回指该条。
+
+2026-11-10：Story 2.3 的取消审计字段已与 `architecture.md` §5.1 D5 / §10.2 对齐（`before_json` 记录被删整单快照，`after_json` 为空）；FR-6 行确认无漂移。
 
 | FR | 能力 | Brief 来源 | ADR（计划） | Story（计划） | Test（计划） |
 |---|---|---|---|---|---|

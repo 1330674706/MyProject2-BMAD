@@ -6,7 +6,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/architecture.md
   - decision-log.md
 created: 2026-11-04
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # 实验室设备预约系统 — Epic Breakdown
@@ -465,8 +465,8 @@ So that 计划变化时 slot 立刻回到池子里，而不是变成一条没人
 
 **Given** 取消成功
 **When** 查询 `audit_log` 该 `target_id` 的最新一行
-**Then** `action == "booking_cancel"`，`after_json["slots"]` 等于被取消的 3 个 `slot_start`（排序后）
-→ `assert row.action == "booking_cancel" and json.loads(row.after_json)["slots"] == sorted(slots)`
+**Then** `action == "booking_cancel"`，`before_json["slots"]` 等于被取消的 3 个 `slot_start`（排序后），`after_json IS NULL`
+→ `assert row.action == "booking_cancel" and json.loads(row.before_json)["slots"] == sorted(slots) and row.after_json is None`
 
 ### Story 2.4: 连续多 slot 选择与改单边界
 

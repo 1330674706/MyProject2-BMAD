@@ -74,7 +74,7 @@ development_status:
 
   epic-2: in-progress
   2-1-提交连续-slot-预约:done
-  2-2-冲突整单原子拒绝与并发裁决: review
+  2-2-冲突整单原子拒绝与并发裁决: done
   2-3-我的预约与取消: backlog
   2-4-连续多-slot-选择与改单边界: backlog
   epic-2-retrospective: optional

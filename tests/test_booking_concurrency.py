@@ -24,14 +24,18 @@ from tests.concurrency_demo import (
     PASSWORD,
     build_jobs,
     duplicate_keys,
+    holder_and_waiter,
     intervals_overlap,
+    lock_hold_interval,
+    lock_wait_interval,
     occupancy_count,
     prepare_database,
     read_trace,
     run_phase,
+    round_pairs,
     slot_group,
-    start_server,
-    stop_server,
+    start_servers,
+    stop_servers,
 )
 
 TRUTH_ROUNDS = 100
@@ -170,27 +174,22 @@ def occ_slots(db_path, slots):
     )[0]["n"]
 
 
-def run_http_phase(db_path, tmp_path, monkeypatch, *, rounds, credentials, count, base_day_offset, hold_ms):
+def run_http_phase(db_path, tmp_path, *, rounds, credentials, count, base_day_offset, hold_ms):
+    """两个真实 src.serve 进程（不同 LAB_PORT、同一 db）承载全部并发请求。"""
     prepare_database(db_path, credentials)
-    server, thread, port = start_server()
     trace_dir = tmp_path / f"trace-{rounds}-{len(credentials)}"
     trace_dir.mkdir()
     jobs = build_jobs(rounds=rounds, count=count, base_day_offset=base_day_offset)
-    if hold_ms:
-        monkeypatch.setenv("TEST_CLAIM_HOLD_MS", str(hold_ms))
-    else:
-        monkeypatch.delenv("TEST_CLAIM_HOLD_MS", raising=False)
+    servers = start_servers(db_path, 2, trace_dir=trace_dir, hold_ms=hold_ms, log_dir=tmp_path)
     try:
         phase = run_phase(
-            host="127.0.0.1",
-            port=port,
+            ports=[server.address() for server in servers],
             credentials=credentials,
             jobs=jobs,
-            trace_dir=trace_dir,
         )
         records = read_trace(trace_dir)
     finally:
-        stop_server(server, thread)
+        stop_servers(servers)
     return phase, jobs, records
 
 
@@ -267,11 +266,10 @@ def test_deterministic_interleaving_yields_one_success_and_one_conflict(lab_env)
     assert rows == 1
 
 
-def test_two_processes_posting_same_group_yield_one_303_and_one_409(lab_env, tmp_path, monkeypatch):
+def test_two_processes_posting_same_group_yield_one_303_and_one_409(lab_env, tmp_path):
     phase, jobs, records = run_http_phase(
         lab_env,
         tmp_path,
-        monkeypatch,
         rounds=100,
         credentials=["2025101", "2025102"],
         count=2,
@@ -283,24 +281,30 @@ def test_two_processes_posting_same_group_yield_one_303_and_one_409(lab_env, tmp
     for job in jobs:
         assert sorted(phase["by_round"][job["index"]]) == [303, 409]
         assert occupancy_count(lab_env, job["equipment_id"], job["slots"]) == len(job["slots"])
-    assert len(records) == 2 * len(jobs)
-    overlaps = [
-        intervals_overlap(records[index], records[index + 1])
-        for index in range(0, len(records), 2)
-    ]
-    assert all(overlaps), f"{overlaps.count(False)} 轮未证明两侧同时进入写事务"
+    assert duplicate_keys(lab_env) == []
+    pids = {record["pid"] for record in records}
+    assert len(pids) == 2, f"trace 只来自 {len(pids)} 个服务进程，未证明跨进程并发"
+    pairs = round_pairs(records)
+    assert len(pairs) == len(jobs)
+    overlaps = []
+    for pair in pairs:
+        holder, waiter = holder_and_waiter(pair)
+        assert holder["pid"] != waiter["pid"], "同轮两个请求落在同一个服务进程，非跨进程并发"
+        overlaps.append(
+            intervals_overlap(lock_wait_interval(waiter), lock_hold_interval(holder))
+        )
+    assert all(overlaps), f"{overlaps.count(False)} 轮输家等锁区间与赢家持锁区间不相交"
     print(
         f"L3 2 并发: rounds={len(jobs)} 状态={sorted({tuple(sorted(v)) for v in phase['by_round'].values()})}"
-        f" 写事务区间相交={sum(overlaps)}/{len(overlaps)}"
+        f" 等锁/持锁区间相交={sum(overlaps)}/{len(overlaps)}"
     )
 
 
-def test_ten_concurrent_requests_yield_one_303_and_nine_409(lab_env, tmp_path, monkeypatch):
+def test_ten_concurrent_requests_yield_one_303_and_nine_409(lab_env, tmp_path):
     credentials = [f"202520{index:02d}" for index in range(10)]
     phase, jobs, _records = run_http_phase(
         lab_env,
         tmp_path,
-        monkeypatch,
         rounds=20,
         credentials=credentials,
         count=2,
@@ -319,11 +323,10 @@ def test_ten_concurrent_requests_yield_one_303_and_nine_409(lab_env, tmp_path, m
     assert len(jobs) == 20
 
 
-def test_no_duplicate_keys_after_concurrent_rounds(lab_env, tmp_path, monkeypatch):
+def test_no_duplicate_keys_after_concurrent_rounds(lab_env, tmp_path):
     phase, jobs, _records = run_http_phase(
         lab_env,
         tmp_path,
-        monkeypatch,
         rounds=3,
         credentials=["2025301", "2025302"],
         count=2,
@@ -400,6 +403,98 @@ def test_conflict_page_marks_conflicting_cells_and_keeps_selection(app, db_path)
     free = re.search(r'<li[^>]*data-slot="%s"[^>]*>' % re.escape(slots[0]), body)
     assert free is not None and 'data-conflict="0"' in free.group(0)
     assert re.search(r'value="%s"[^>]*checked' % re.escape(slots[0]), body) is not None
+    assert "data-conflict-page" not in body, "逐格标脏的 409 不应再叠整页提示"
+
+
+def test_conflict_page_with_empty_reread_is_a_page_notice_not_blank_grid(app, db_path, monkeypatch):
+    """409 且重查为空：整页冲突提示 + 原网格 + 原选择，不再是一屏 data-conflict="0"。"""
+    seed_equipment(db_path)
+    student = login_student(app, "2025001")
+    other = login_student(app, "2025002")
+    slots = slot_group_of(day_after(1), "13:00", 3)
+    assert post_booking(other, slots=[slots[1]]).status_code == 303
+    monkeypatch.setattr(occupancy_repo, "select_taken", lambda conn, equipment_id, slots: [])
+
+    response = post_booking(student, slots=slots)
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 409
+    assert 'data-conflict-page="1"' in body
+    assert "所选 slot 已被占用" in body
+    assert len(re.findall(r'data-slot="', body)) == 47, "整页提示必须保留原网格"
+    assert 'data-conflict="0"' not in body
+    assert re.search(r'value="%s"[^>]*checked' % re.escape(slots[0]), body) is not None
+    other_cell = re.search(r'<li[^>]*data-slot="%s"[^>]*>' % re.escape(slots[1]), body)
+    assert other_cell is not None and 'data-state="booked_by_other"' in other_cell.group(0), (
+        "整页提示必须基于刷新后的占用状态，而不是旧数据"
+    )
+    assert "Traceback" not in body
+
+
+def test_plain_slots_page_has_no_conflict_notice(app, db_path):
+    seed_equipment(db_path)
+    student = login_student(app, "2025001")
+
+    body = student.get(f"/slots?equipment_id=E1&date={day_after(1)}").get_data(as_text=True)
+
+    assert 'data-slot="' in body
+    assert "data-conflict-page" not in body
+    assert "提交未完成" not in body
+    assert 'data-conflict="0"' in body
+
+
+def test_serve_reports_app_error_as_startup_failure(monkeypatch, capsys):
+    """1.4 的启动契约：AppError（含 Unavailable）必须打印"启动失败："并返回 2。"""
+    import src.serve as serve
+
+    def broken_app():
+        raise Unavailable("数据库繁忙，请稍后重试")
+
+    monkeypatch.setattr(serve, "create_app", broken_app)
+    monkeypatch.setenv("LAB_PORT", "5088")
+
+    code = serve.main()
+
+    captured = capsys.readouterr()
+    assert code == 2
+    assert captured.err.startswith("启动失败：")
+    assert "Traceback" not in captured.err + captured.out
+
+
+def test_commit_failure_rolls_back_and_traces_commit_failed(lab_env, tmp_path, monkeypatch):
+    """COMMIT 抛非 OperationalError 时必须显式 ROLLBACK，且 outcome 不得记为 commit。"""
+    db.initialize(lab_env)
+    trace_dir = tmp_path / "trace-commit-failed"
+    trace_dir.mkdir()
+    monkeypatch.setenv("LAB_TX_TRACE_DIR", str(trace_dir))
+    connection = db.connect(lab_env)
+    try:
+        connection.executescript(
+            """
+            CREATE TABLE parent (id TEXT PRIMARY KEY);
+            CREATE TABLE child (
+                id        TEXT PRIMARY KEY,
+                parent_id TEXT REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED
+            );
+            """
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            with write_tx(connection):
+                connection.execute(
+                    "INSERT INTO child (id, parent_id) VALUES ('c1', 'missing-parent')"
+                )
+        assert connection.in_transaction is False
+        assert connection.execute("SELECT COUNT(*) FROM child").fetchone()[0] == 0
+    finally:
+        connection.close()
+
+    records = read_trace(trace_dir)
+    assert len(records) == 1
+    record = records[0]
+    assert record["outcome"] == "commit_failed"
+    assert record["lock_acquired_ns"] is not None
+    assert record["lock_released_ns"] is not None
+    assert record["lock_released_ns"] >= record["lock_acquired_ns"]
 
 
 def attempt_booking(db_path, user_id, slots, equipment_id="E1"):
@@ -505,10 +600,13 @@ def rebuild_without_unique_constraint(db_path):
     assert unique_indexes == [], "C3 前置未生效：唯一约束仍然存在"
 
 
-def test_busy_begin_is_retried_then_mapped_to_unavailable(lab_env, monkeypatch):
+def test_busy_begin_is_retried_then_mapped_to_unavailable(lab_env, tmp_path, monkeypatch):
     db.initialize(lab_env)
     delays = []
     monkeypatch.setattr("src.data.tx._sleep", delays.append, raising=False)
+    trace_dir = tmp_path / "trace-busy-begin"
+    trace_dir.mkdir()
+    monkeypatch.setenv("LAB_TX_TRACE_DIR", str(trace_dir))
     blocker = connect(lab_env)
     blocker.execute("BEGIN IMMEDIATE")
     connection = db.connect(lab_env)
@@ -523,6 +621,14 @@ def test_busy_begin_is_retried_then_mapped_to_unavailable(lab_env, monkeypatch):
         connection.close()
         blocker.execute("ROLLBACK")
         blocker.close()
+
+    records = read_trace(trace_dir)
+    assert len(records) == 1, "抢锁失败也必须留下 trace，不能静默丢样本"
+    record = records[0]
+    assert record["outcome"] == "begin_busy"
+    assert record["lock_acquired_ns"] is None
+    assert record["lock_released_ns"] is None
+    assert lock_wait_interval(record) == (record["lock_request_ns"], record["exit_ns"])
 
 
 def test_busy_write_lock_returns_503_not_500(app, db_path, monkeypatch):

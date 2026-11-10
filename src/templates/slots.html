@@ -16,7 +16,12 @@
   </label>
   <button type="submit">查看</button>
 </form>
-{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+{% if grid and grid.conflict_scope == "page" %}
+<section class="conflict-page" data-conflict-page="1" role="alert">
+  <p class="alert">提交未完成：{{ error }}</p>
+  <p class="hint">下方网格已按最新占用状态刷新；仍然可选的 slot 保留原勾选，请核对后重新提交。</p>
+</section>
+{% elif error %}<p class="alert">{{ error }}</p>{% endif %}
 {% if grid %}
 <p class="hint">开放时间 {{ grid.open_start }}–{{ grid.open_end }}，每格 30 分钟。</p>
 <form class="booking-form" method="post" action="{{ url_for('bookings.create') }}">

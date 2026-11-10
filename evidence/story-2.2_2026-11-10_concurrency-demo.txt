@@ -1,8 +1,8 @@
-# 服务 http://127.0.0.1:51584  db=C:\Users\ADMIN\AppData\Local\Temp\lab-concurrency-e0nmlxsk\lab.db
-# 2 并发 × 100 轮 用时 13.92s
+# 服务 http://127.0.0.1:58680, http://127.0.0.1:58681  db=C:\Users\ADMIN\AppData\Local\Temp\lab-concurrency-pxya850k\lab.db
+# 2 并发 × 100 轮 用时 13.71s
 # 每轮状态集合: [(303, 409)]  合规轮次: 100/100
 # 子进程异常: []
-# 写事务区间记录 200 条，相交轮次 100/100
+# trace 200 条，来自 2 个服务进程 [20096, 22868]；输家等锁区间与赢家持锁区间相交 100/100
 # 10 并发 × 20 轮 合规轮次: 20/20
 # 全库重复 key: []
-OK: 每轮 1 成功 + 1 冲突（或 1+9），无 5xx，无重复 key
+OK: 每轮 1 成功 + 1 冲突（或 1+9），无 5xx，无重复 key，锁区间相交

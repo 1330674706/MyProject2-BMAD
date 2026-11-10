@@ -1,6 +1,6 @@
 <ol class="slot-grid">
   {% for cell in grid.cells %}
-  <li class="slot-cell{% if cell.conflicted %} is-conflict{% endif %}" data-state="{{ cell.state }}" data-slot="{{ cell.start }}" data-conflict="{{ '1' if cell.conflicted else '0' }}">
+  <li class="slot-cell{% if cell.conflicted %} is-conflict{% endif %}" data-state="{{ cell.state }}" data-slot="{{ cell.start }}"{% if cell.conflicted %} data-conflict="1"{% elif grid.conflict_scope != "page" %} data-conflict="0"{% endif %}>
     <span class="slot-time">{{ cell.local_time }}</span>
     <span class="slot-label">{{ cell.label }}</span>
     {% if cell.conflicted %}<span class="slot-conflict">已失效</span>{% endif %}

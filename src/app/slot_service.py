@@ -36,6 +36,8 @@ STATE_LABELS = {
     "closed_window": "超出可约窗口",
 }
 
+CONFLICT_SCOPES = frozenset({"none", "cells", "page"})
+
 
 @dataclass(frozen=True)
 class SlotCell:
@@ -65,6 +67,11 @@ class SlotGrid:
     open_start: str
     open_end: str
     cells: tuple[SlotCell, ...]
+    conflict_scope: str = "none"
+
+    def __post_init__(self) -> None:
+        if self.conflict_scope not in CONFLICT_SCOPES:
+            raise ValueError(f"未知冲突作用域: {self.conflict_scope}")
 
     def __iter__(self):
         return iter(self.cells)
@@ -153,10 +160,20 @@ def build_slot_grid(
         )
         for start in slots
     )
+    # 作用域按"渲染出来的格子是否真的被标脏"判定，而不是按入参集合：
+    # 冲突 slot 若不在这一天的网格里（隐藏 date 与 slot 不一致），标脏数为 0，
+    # 此时必须退化成整页提示，不能给出一屏 data-conflict="0" 的假清白页。
+    if any(cell.conflicted for cell in cells):
+        conflict_scope = "cells"
+    elif selected:
+        conflict_scope = "page"
+    else:
+        conflict_scope = "none"
     return SlotGrid(
         equipment_id=equipment_id,
         day=day_text,
         open_start=equipment["open_start"],
         open_end=equipment["open_end"],
         cells=cells,
+        conflict_scope=conflict_scope,
     )

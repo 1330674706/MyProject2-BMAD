@@ -72,7 +72,14 @@ def _rollback(conn) -> None:
         pass
 
 
-def _trace(enter_ns: int, outcome: str) -> None:
+def _trace(
+    *,
+    enter_ns: int,
+    lock_request_ns: int,
+    lock_acquired_ns,
+    lock_released_ns,
+    outcome: str,
+) -> None:
     directory = os.environ.get(TRACE_ENV)
     if not directory:
         return
@@ -80,6 +87,9 @@ def _trace(enter_ns: int, outcome: str) -> None:
         "pid": os.getpid(),
         "thread": threading.get_ident(),
         "enter_ns": enter_ns,
+        "lock_request_ns": lock_request_ns,
+        "lock_acquired_ns": lock_acquired_ns,
+        "lock_released_ns": lock_released_ns,
         "exit_ns": time.monotonic_ns(),
         "outcome": outcome,
     }
@@ -90,30 +100,71 @@ def _trace(enter_ns: int, outcome: str) -> None:
         pass
 
 
+def _release(conn, lock_acquired_ns):
+    """回滚并记录锁真正交还的时刻；没有拿到锁就没有持锁区间。"""
+    if lock_acquired_ns is None:
+        return None
+    _rollback(conn)
+    return time.monotonic_ns()
+
+
 @contextmanager
 def write_tx(conn):
     enter_ns = time.monotonic_ns()
-    outcome = "commit"
-    _begin_immediate(conn)
+    lock_request_ns = time.monotonic_ns()
+    lock_acquired_ns = None
+    lock_released_ns = None
+    outcome = "rollback"
     try:
-        hold = _test_hold_seconds()
-        if hold:
-            _sleep(hold)
-        yield conn
-    except BaseException:
-        outcome = "rollback"
-        _rollback(conn)
-        raise
-    else:
         try:
-            conn.execute("COMMIT")
-        except sqlite3.OperationalError as error:
-            if _errorname(error) in BUSY_ERRONAMES:
-                outcome = "busy"
-                _rollback(conn)
-                raise Unavailable(BUSY_MESSAGE) from None
-            outcome = "error"
-            _rollback(conn)
+            _begin_immediate(conn)
+        except Unavailable:
+            outcome = "begin_busy"
             raise
+        except BaseException:
+            # BEGIN 没拿到锁（也不是忙等耗尽）：没有事务可回滚，记真实原因。
+            outcome = "begin_failed"
+            raise
+        lock_acquired_ns = time.monotonic_ns()
+        try:
+            hold = _test_hold_seconds()
+            if hold:
+                _sleep(hold)
+            yield conn
+        except BaseException:
+            outcome = "rollback"
+            lock_released_ns = _release(conn, lock_acquired_ns)
+            raise
+        else:
+            try:
+                conn.execute("COMMIT")
+            except sqlite3.OperationalError as error:
+                if _errorname(error) in BUSY_ERRONAMES:
+                    outcome = "commit_busy"
+                    lock_released_ns = _release(conn, lock_acquired_ns)
+                    raise Unavailable(BUSY_MESSAGE) from None
+                outcome = "commit_failed"
+                lock_released_ns = _release(conn, lock_acquired_ns)
+                raise
+            except sqlite3.Error:
+                # 例如延迟外键在 COMMIT 时抛 IntegrityError：必须显式回滚，
+                # 且不得把这次提交记成 commit。
+                outcome = "commit_failed"
+                lock_released_ns = _release(conn, lock_acquired_ns)
+                raise
+            except BaseException:
+                # 非 sqlite3 异常同样要把事务收干净，不能让连接停在事务里。
+                outcome = "commit_failed"
+                lock_released_ns = _release(conn, lock_acquired_ns)
+                raise
+            else:
+                outcome = "commit"
+                lock_released_ns = time.monotonic_ns()
     finally:
-        _trace(enter_ns, outcome)
+        _trace(
+            enter_ns=enter_ns,
+            lock_request_ns=lock_request_ns,
+            lock_acquired_ns=lock_acquired_ns,
+            lock_released_ns=lock_released_ns,
+            outcome=outcome,
+        )

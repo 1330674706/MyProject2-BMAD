@@ -8,6 +8,7 @@ import sys
 
 from app import create_app
 from src.core.config import ConfigError
+from src.core.errors import AppError
 
 
 def main() -> int:
@@ -23,7 +24,7 @@ def main() -> int:
 
     try:
         application = create_app()
-    except (ConfigError, sqlite3.Error, OSError) as error:
+    except (AppError, ConfigError, sqlite3.Error, OSError) as error:
         print(f"启动失败：{error}", file=sys.stderr)
         return 2
 

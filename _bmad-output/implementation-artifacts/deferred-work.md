@@ -33,3 +33,23 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-create-booking.md`
   summary: 由服务端派生成功后的跳转日期，或拒绝与所提交 slot 不一致的隐藏 `date`。
   evidence: 隐藏 `date` 只影响 303 落点，不影响写入的 slot 集合；修复需让用例返回预约日期，属 2.3/2.4 页面整合范围。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
+  summary: 把 `architecture.md` §5.4 L3 的“同一个运行中的服务进程”改成“两个服务进程”，并同步 `PRD.md` §11。
+  evidence: 本次按复审要求把 L3 改成两个 `src.serve` 进程（不同 `LAB_PORT`、同一库），比原文更强；改规划文档须按 R7 同一改动同步 §11，需人工确认后执行，故未在本次代码改动内完成。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
+  summary: 更新 `spec-2-2-conflict-atomicity.md` 里 L3 的描述与旧证据，使其不再声称“进程内 make_server + 整体写事务区间相交”。
+  evidence: 该文件是已 `done` 的历史记录，本次复审修复改动的是同一批测试与 `tx.py` trace 字段；改写历史 spec 属于人工确认范围。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
+  summary: 让 `db.initialize()` 在多个服务进程同时首次启动同一个全新库时不会撞 `table already exists`。
+  evidence: `apply_migrations()` 在 `write_tx()` 之外读 `PRAGMA user_version`，两个进程同时启动全新库时后到者会重复执行 DDL；并发用例都先用 `prepare_database()` 预置库，故不受影响，但真实现场同时起两个进程仍会触发。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
+  summary: `python -m src.serve` 在端口被占用等 `application.run()` 抛错时也应打印“启动失败：…”并返回 2。
+  evidence: 现有 `except` 只包住 `create_app()`，`application.run()` 的 `OSError` 仍会打 traceback 并以 1 退出；这是 1.4 启动契约的既有缺口，不在本次五条复审修复范围内。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-review-fixes.md`
+  summary: 409 整页提示时给提交过但无法定位的格子加“未验证”标记，而不是只显示 free。
+  evidence: 复审意见认为 page 作用域下提交的 slot 仍按 `free` 渲染、缺少可操作线索；六态枚举是 1.3/3.1 的共同契约，新增第七种视觉状态需先改 `epics.md` 并经人工确认，故本次只保留整页提示与网格。

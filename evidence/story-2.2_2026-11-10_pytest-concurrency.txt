@@ -4,27 +4,27 @@ cachedir: .pytest_cache
 rootdir: F:\研一\软件工程管理\MyProject2
 configfile: pytest.ini
 plugins: anyio-4.10.0
-collecting ... collected 16 items
+collecting ... collected 20 items
 
-tests/test_booking_concurrency.py::test_unique_index_is_plain_unique_on_equipment_slot PASSED
-tests/test_booking_concurrency.py::test_deterministic_interleaving_yields_one_success_and_one_conflict PASSED
-tests/test_booking_concurrency.py::test_two_processes_posting_same_group_yield_one_303_and_one_409 L3 2 并发: rounds=100 状态=[(303, 409)] 写事务区间相交=100/100
-PASSED
-tests/test_booking_concurrency.py::test_ten_concurrent_requests_yield_one_303_and_nine_409 PASSED
-tests/test_booking_concurrency.py::test_no_duplicate_keys_after_concurrent_rounds PASSED
-tests/test_booking_concurrency.py::test_taken_third_of_four_returns_409_and_writes_nothing PASSED
-tests/test_booking_concurrency.py::test_resubmitting_same_group_returns_409_and_keeps_occupancy PASSED
-tests/test_booking_concurrency.py::test_conflict_at_fifth_slot_leaves_first_four_unwritten PASSED
-tests/test_booking_concurrency.py::test_conflict_page_marks_conflicting_cells_and_keeps_selection PASSED
-tests/test_booking_concurrency.py::test_truth_table_c1_constraint_and_precheck_give_one_success C1 successes=100 conflicts=100 rounds=100
-PASSED
-tests/test_booking_concurrency.py::test_truth_table_c2_short_circuited_precheck_still_gives_one_success C2 successes=100 conflicts=100 rounds=100
-PASSED
-tests/test_booking_concurrency.py::test_truth_table_c3_dropped_constraint_must_show_two_successes C3 successes=200 conflicts=0 rounds=100 per_round=[2]
-PASSED
-tests/test_booking_concurrency.py::test_busy_begin_is_retried_then_mapped_to_unavailable PASSED
-tests/test_booking_concurrency.py::test_busy_write_lock_returns_503_not_500 PASSED
-tests/test_booking_concurrency.py::test_now_is_read_inside_write_tx PASSED
-tests/test_booking_concurrency.py::test_no_in_process_lock_and_no_ignore_or_replace PASSED
+tests/test_booking_concurrency.py::test_unique_index_is_plain_unique_on_equipment_slot PASSED [  5%]
+tests/test_booking_concurrency.py::test_deterministic_interleaving_yields_one_success_and_one_conflict PASSED [ 10%]
+tests/test_booking_concurrency.py::test_two_processes_posting_same_group_yield_one_303_and_one_409 PASSED [ 15%]
+tests/test_booking_concurrency.py::test_ten_concurrent_requests_yield_one_303_and_nine_409 PASSED [ 20%]
+tests/test_booking_concurrency.py::test_no_duplicate_keys_after_concurrent_rounds PASSED [ 25%]
+tests/test_booking_concurrency.py::test_taken_third_of_four_returns_409_and_writes_nothing PASSED [ 30%]
+tests/test_booking_concurrency.py::test_resubmitting_same_group_returns_409_and_keeps_occupancy PASSED [ 35%]
+tests/test_booking_concurrency.py::test_conflict_at_fifth_slot_leaves_first_four_unwritten PASSED [ 40%]
+tests/test_booking_concurrency.py::test_conflict_page_marks_conflicting_cells_and_keeps_selection PASSED [ 45%]
+tests/test_booking_concurrency.py::test_conflict_page_with_empty_reread_is_a_page_notice_not_blank_grid PASSED [ 50%]
+tests/test_booking_concurrency.py::test_plain_slots_page_has_no_conflict_notice PASSED [ 55%]
+tests/test_booking_concurrency.py::test_serve_reports_app_error_as_startup_failure PASSED [ 60%]
+tests/test_booking_concurrency.py::test_commit_failure_rolls_back_and_traces_commit_failed PASSED [ 65%]
+tests/test_booking_concurrency.py::test_truth_table_c1_constraint_and_precheck_give_one_success PASSED [ 70%]
+tests/test_booking_concurrency.py::test_truth_table_c2_short_circuited_precheck_still_gives_one_success PASSED [ 75%]
+tests/test_booking_concurrency.py::test_truth_table_c3_dropped_constraint_must_show_two_successes PASSED [ 80%]
+tests/test_booking_concurrency.py::test_busy_begin_is_retried_then_mapped_to_unavailable PASSED [ 85%]
+tests/test_booking_concurrency.py::test_busy_write_lock_returns_503_not_500 PASSED [ 90%]
+tests/test_booking_concurrency.py::test_now_is_read_inside_write_tx PASSED [ 95%]
+tests/test_booking_concurrency.py::test_no_in_process_lock_and_no_ignore_or_replace PASSED [100%]
 
-============================= 16 passed in 26.31s =============================
+============================= 20 passed in 27.18s =============================

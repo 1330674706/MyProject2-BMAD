@@ -1,0 +1,37 @@
+变异自检：在 write_tx 内临时插入进程内互斥锁，检查输家等锁区间与赢家持锁区间相交这条断言是否会变红。
+为什么用单服务进程跑：变异体是 threading.Lock，只在同一个服务进程内生效；两个服务进程拓扑下它无法串行化请求，变异不会生效。
+单进程拓扑与 L3 用的是同一条断言、同一份 trace 语义（tx.py 的 lock_request / lock_acquired / lock_released）。
+
+命令：python %TEMP%\\lab_mutation_check.py  （1 个 python -m src.serve，2 客户端进程 Barrier 齐发，20 轮，TEST_CLAIM_HOLD_MS=50）
+
+== 变异前（原实现）==
+rounds=20 codes=[(303, 409)] overlaps=20/20
+OVERLAP-ASSERTION-PASSED
+
+== 变异体（临时改动，已还原）==
+@@ src/data/tx.py @@
+ _sleep = time.sleep
++_mutation_lock = threading.Lock()
+@@
+-@contextmanager
+-def write_tx(conn):
++@contextmanager
++def write_tx(conn):
++    _mutation_lock.acquire()
++    try:
++        with _write_tx_impl(conn) as active:
++            yield active
++    finally:
++        _mutation_lock.release()
++
++
++@contextmanager
++def _write_tx_impl(conn):
+
+== 变异后（断言必须失败）==
+rounds=20 codes=[(303, 409)] overlaps=0/20
+OVERLAP-ASSERTION-FAILED (expected under mutation)
+
+== 还原后（同一断言恢复全绿）==
+rounds=20 codes=[(303, 409)] overlaps=20/20
+OVERLAP-ASSERTION-PASSED

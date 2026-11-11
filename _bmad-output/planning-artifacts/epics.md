@@ -478,30 +478,37 @@ So that 我不会遇到"前端说可以、提交说不行"，也不会在改单�
 
 **Acceptance Criteria:**
 
-**Given** 一个参数化用例矩阵：连续合法 / 中断 / 9 个 / 非对齐 / 超出开放窗口 / 首 slot 超 7 天 / 跨设备
+**实现边界**：本 Story 只交付 `src/app/` 的规则内核与改单用例；HTTP `303/400/409` 的状态码映射与页面断言由 Story 3.2 承接。以下 AC 按服务层等价契约表述：无异常＝成功，`Validation`＝400，`Conflict`＝409。
+
+**Given** 一个参数化用例矩阵：连续合法 / 中断 / 9 个 / 非对齐 / 超出开放窗口 / 首 slot 超 7 天
 **When** 分别以 `mode="create"` 与 `mode="edit"` 调用 `app.slot_rules.validate()`
 **Then** 同一个用例在两种 mode 下的结果码完全一致（合法→通过，非法→`Validation`），除"2 小时截止"只对 edit 生效
 → `assert [(c, m, outcome(case, m)) for c in cases for m in ("create","edit")] == EXPECTED_MATRIX`
 
 **Given** 已有预约占 `14:00–15:00`（3 个 slot，含 `14:30`）
 **When** 管理员把该预约改到 `14:30–15:30`（与自身旧集合有交集）
-**Then** 返回 303（不是 409）；该 `booking_id` 的 `occupancy` 恰为 3 行新 slot；`booking_id` 不变
-→ `assert resp.status_code == 303 and occ_set(booking_id) == new_set and len(new_set) == 3`
+**Then** 不抛异常（不是 `Conflict`）；该 `booking_id` 的 `occupancy` 恰为 3 行新 slot；`booking_id` 不变
+→ `assert result == booking_id and occ_set(booking_id) == new_set and len(new_set) == 3`
 
 **Given** 目标集合中包含被他人预约或被锁定的 slot
 **When** 执行改单
-**Then** 返回 409；原 `occupancy` 集合按 `(equipment_id, slot_start, kind, booking_id)` 排序后逐行相等
-→ `assert resp.status_code == 409 and sorted_rows(occ_before) == sorted_rows(occ_after)`
+**Then** 抛 `Conflict`；原 `occupancy` 集合按 `(equipment_id, slot_start, kind, booking_id)` 排序后逐行相等
+→ `assert raises(Conflict) and sorted_rows(occ_before) == sorted_rows(occ_after)`
 
 **Given** 目标集合为 9 个 slot，或两个 slot 之间隔了 30 分钟以上
 **When** 执行改单
-**Then** 返回 400（不是 409），原集合不变
-→ `assert (nine.status_code, gap.status_code) == (400, 400) and sorted_rows(occ_before) == sorted_rows(occ_after)`
+**Then** 抛 `Validation`（不是 `Conflict`），原集合不变
+→ `assert (nine_exc, gap_exc) == (Validation, Validation) and sorted_rows(occ_before) == sorted_rows(occ_after)`
 
 **Given** 预约首个 slot 距现在 1 小时 59 分
 **When** 执行改单
-**Then** 返回 400，原集合不变
-→ `assert resp.status_code == 400 and sorted_rows(occ_before) == sorted_rows(occ_after)`
+**Then** 抛 `Validation`，原集合不变
+→ `assert raises(Validation) and sorted_rows(occ_before) == sorted_rows(occ_after)`
+
+**Given** 改单请求把 `equipment_id` 换成另一台设备
+**When** 执行改单
+**Then** 抛 `Validation`（换设备必须先取消再重新预约，改单只改时间），booking 行与 occupancy 行都不变
+→ `assert raises(Validation) and booking_row(booking_id).equipment_id == before_equipment_id and sorted_rows(occ_before) == sorted_rows(occ_after)`
 
 **Given** 一次成功改单
 **When** 统计该 `equipment_id` 的 key 分布

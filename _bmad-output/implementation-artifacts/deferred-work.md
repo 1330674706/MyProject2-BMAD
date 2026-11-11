@@ -65,3 +65,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-cancel-booking.md`
   summary: 明确“我的预约”的排序契约并写成断言（含同秒创建的次序）。
   evidence: `LIST_BY_OWNER` 按 `created_at DESC, id` 排序，而 `created_at` 只到秒，同秒创建时退化为 uuid 顺序；FR-6 与 AC 均未规定顺序，需规划确认后再固化。
+
+## Deferred from: code review of spec-2-4-slot-rules-edit.md (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-slot-rules-edit.md`
+  summary: 同步 `PRD.md` §11 的 2.4 日期确认行，并对齐 FR-7 的 ADR 集合（§11 行写 ADR-002/003/005，`epics.md` 2.4 写 ADR-001/005）。
+  evidence: 改规划工件须按 R7 在同一改动同步 §11 并经人工确认；本次代码改动内未执行。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-slot-rules-edit.md`
+  summary: 补齐 Story 2.4 先红后绿的运行证据，使 R5 可复核。
+  evidence: 单个 commit `1aad2d6` 同时包含测试与实现，spec 中 `9 failed` 的红灯记录只有自述，无法从仓库历史复核。

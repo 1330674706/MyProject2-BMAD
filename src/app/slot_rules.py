@@ -40,10 +40,14 @@ def validate(equipment, slots, now, *, mode="create", current_first_slot=None):
     """校验 1–8 个连续、对齐、在开放窗口与 7 天窗口内的未来 slot。
 
     create/edit 共用同一套形状规则；只有 edit 额外执行首个 slot 前 2 小时截止。
-    `current_first_slot` 供改单同时约束原预约的首个 slot。
+    `current_first_slot` 仅供 edit 使用且必填：edit 同时约束原预约与目标的首个 slot。
     """
     if mode not in VALID_MODES:
         raise ValueError(f"未知校验模式: {mode}")
+    if mode == "edit" and current_first_slot is None:
+        raise ValueError("edit 模式必须提供原预约的首个 slot")
+    if mode == "create" and current_first_slot is not None:
+        raise ValueError("create 模式不接受 current_first_slot")
     if not slots:
         raise Validation("请至少选择 1 个 slot")
     if len(slots) > MAX_SLOTS:
@@ -70,9 +74,7 @@ def validate(equipment, slots, now, *, mode="create", current_first_slot=None):
         if moment > window_end:
             raise Validation("所选 slot 超出可约窗口")
     if mode == "edit":
-        edit_starts = [moments[0]]
-        if current_first_slot is not None:
-            edit_starts.append(_parse_slot(current_first_slot))
+        edit_starts = [moments[0], _parse_slot(current_first_slot)]
         deadline = timedelta(hours=CANCEL_LEAD_HOURS)
         if any(start - now_moment < deadline for start in edit_starts):
             raise Validation(f"改单需在首个 slot 开始前至少 {CANCEL_LEAD_HOURS} 小时")

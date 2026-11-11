@@ -142,6 +142,8 @@ def edit_booking(conn, actor_id, booking_id, equipment_id, slots, now=None):
             old_slots = [row["slot_start"] for row in old_rows]
             if not old_slots:
                 raise NotFound("预约不存在或已取消")
+            if equipment_id != booking["equipment_id"]:
+                raise Validation("改单不能更换设备，请取消后重新预约")
 
             equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
             if equipment is None or not equipment["active"]:

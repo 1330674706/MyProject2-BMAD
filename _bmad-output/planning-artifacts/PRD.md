@@ -367,7 +367,7 @@ updated: 2026-11-10
 | FR-4 | 提交连续 slot 预约 | §4、§7 | ADR-001 唯一约束；ADR-005 | 2.1、2.4 | `tests/test_create_booking.py`、`tests/test_slot_rules.py` |
 | FR-5 | 冲突原子拒绝 | §3、§4、§6 | ADR-001 唯一约束；ADR-005 | 2.2、3.3 | `tests/test_booking_concurrency.py`、`tests/test_admin_lock.py` |
 | FR-6 | 我的预约与取消 | §4、§7 | ADR-001；ADR-002；ADR-005 | 2.3 | `tests/test_cancel_booking.py` |
-| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-002；ADR-003；ADR-005 | 2.4、3.1、3.2、3.3 | `tests/test_slot_rules.py`、`tests/test_admin_week_view.py`、`tests/test_admin_edit_booking.py`、`tests/test_admin_lock.py` |
+| FR-7 | 管理员周视图、学生检索、改单与锁定 | §4 | ADR-001；ADR-002；ADR-003；ADR-005 | 2.4、3.1、3.2、3.3 | `tests/test_slot_rules.py`、`tests/test_admin_week_view.py`、`tests/test_admin_edit_booking.py`、`tests/test_admin_lock.py` |
 | FR-8 | 本周视图导出与操作日志 | §4 | ADR-002；ADR-005 | 3.4 | `tests/test_export_audit.py` |
 
 NFR 测试索引：NFR-1 → `tests/test_booking_concurrency.py`（含 C1–C3 变异对照）；NFR-2 → `tests/test_ops_startup.py`；NFR-3 → `tests/test_slot_view.py`（viewport 与断点断言）+ `tests/test_admin_week_view.py`，另需 375/1280 两档人工截图；NFR-4 → `tests/test_auth_login.py`（哈希与明文扫描）+ `tests/test_export_audit.py`（导出与日志脱敏）。

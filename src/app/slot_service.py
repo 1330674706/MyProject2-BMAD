@@ -71,6 +71,11 @@ class SlotCell:
             self.own and self.state == "booked_by_other" and not self.conflicted
         )
 
+    @property
+    def lockable(self) -> bool:
+        """管理员锁定页可勾选：空闲格可加锁，已锁定格可解锁。"""
+        return self.state in ("free", "locked") and not self.conflicted
+
 
 @dataclass(frozen=True)
 class SlotGrid:

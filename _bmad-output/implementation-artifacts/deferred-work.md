@@ -95,3 +95,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
   summary: R5 先红后绿证据同样不可复核，需与 2.4 一并补齐。
   evidence: `git show --stat 50dae79` 显示 `tests/test_admin_edit_booking.py | 571 +++` 与实现同处一个 commit，spec 的"13 failed"只有自述。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
+  summary: 为锁定/解锁校验补 `tests/test_slot_rules.py` 单测（空列表、未对齐、重复值、7 天边界）。
+  evidence: `validate_lock_slots()` / `validate_unlock_slots()` 目前只经 HTTP 覆盖；PRD §11 把 FR-7 映射到该测试文件，补齐可防形状规则回归。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
+  summary: 为同一请求内的重复 slot 去重补一条回归测试。
+  evidence: `_unique_aligned_slots()` 的去重是解锁 `rowcount == len(validated)` 的前提；删掉去重分支时现有 17 条测试全绿，但渲染表单每格只有一个值，正常流程不可达。

@@ -217,6 +217,70 @@ def edit_booking(conn, actor_id, booking_id, equipment_id, slots, now=None):
     return booking_id
 
 
+def lock_slots(conn, actor_id, equipment_id, slots, now=None):
+    """管理员锁定 slot：插入 kind='lock'、booking_id IS NULL 的占用行（FR-7）。
+
+    与预约共用 uq_occupancy_slot；已被预约或已锁定都由唯一约束拒绝为 409。
+    """
+    validated = []
+    try:
+        with write_tx(conn):
+            now_text = now or now_utc()
+            equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
+            if equipment is None or not equipment["active"]:
+                raise Validation("设备不存在")
+            validated = slot_rules.validate_lock_slots(equipment, slots, now_text)
+            try:
+                occupancy_repo.insert_occupancy(
+                    conn,
+                    equipment_id,
+                    validated,
+                    None,
+                    "lock",
+                    created_at=now_text,
+                )
+            except sqlite3.IntegrityError as error:
+                if _is_slot_clash(error):
+                    raise _SlotTaken() from error
+                raise Validation("锁定写入违反数据库约束") from None
+            audit_repo.insert_audit(
+                conn,
+                actor_id=actor_id,
+                action="lock",
+                target_type="equipment",
+                target_id=equipment_id,
+                before_json=None,
+                after_json=redact.dump_fields("equipment", {"slots": validated}),
+                created_at=now_text,
+            )
+    except _SlotTaken:
+        _raise_conflict(conn, equipment_id, validated)
+    return validated
+
+
+def unlock_slots(conn, actor_id, equipment_id, slots, now=None):
+    """管理员解锁：只删 kind='lock' 行；rowcount 不足即 404 并整单回滚。"""
+    with write_tx(conn):
+        now_text = now or now_utc()
+        equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
+        if equipment is None or not equipment["active"]:
+            raise Validation("设备不存在")
+        validated = slot_rules.validate_unlock_slots(slots)
+        if occupancy_repo.delete_lock_rows(conn, equipment_id, validated) != len(validated):
+            raise NotFound(f"锁定不存在或已解锁：{'、'.join(validated)}")
+        audit_repo.insert_audit(
+            conn,
+            actor_id=actor_id,
+            action="unlock",
+            target_type="equipment",
+            target_id=equipment_id,
+            before_json=None,
+            after_json=redact.dump_fields("equipment", {"slots": validated}),
+            created_at=now_text,
+        )
+    return validated
+
+
 def _slot_display(slot_start: str) -> str:
     return utc_to_local(slot_start).strftime("%m-%d %H:%M")
 

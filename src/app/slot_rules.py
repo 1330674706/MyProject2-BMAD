@@ -95,6 +95,44 @@ def cancel_status(first_slot, now):
     return CANCEL_STATUS_CANCELLABLE
 
 
+def _unique_aligned_slots(slots):
+    """校验形状并去重保序；重复 slot 只保留一次，避免自撞唯一键。"""
+    unique = []
+    for raw in slots:
+        moment = _parse_slot(raw)
+        if moment.minute % SLOT_MINUTES != 0 or moment.second != 0:
+            raise Validation("slot 必须对齐到整点或半点")
+        if raw not in unique:
+            unique.append(raw)
+    return unique
+
+
+def validate_lock_slots(equipment, slots, now):
+    """锁定接受 1+ 个未来 7 天内、开放窗口内的对齐 slot；不要求连续。"""
+    if not slots:
+        raise Validation("请至少选择 1 个 slot")
+    normalized = _unique_aligned_slots(slots)
+    open_start, open_end = _open_window(equipment)
+    now_moment = parse_utc(now) if isinstance(now, str) else now
+    window_end = now_moment + timedelta(days=WINDOW_DAYS)
+    for raw in normalized:
+        moment = _parse_slot(raw)
+        if not (open_start <= utc_to_local(raw).time() < open_end):
+            raise Validation("slot 不在设备开放时间内")
+        if moment <= now_moment:
+            raise Validation("不能锁定已开始的 slot")
+        if moment > window_end:
+            raise Validation("所选 slot 超出可锁窗口")
+    return normalized
+
+
+def validate_unlock_slots(slots):
+    """解锁只校验形状：允许清理已经过去或滑出窗口的历史锁。"""
+    if not slots:
+        raise Validation("请至少选择 1 个 slot")
+    return _unique_aligned_slots(slots)
+
+
 def validate_cancellable(first_slot, now):
     """取消截止：首个 slot 开始前至少 2 小时（FR-6）。"""
     status = cancel_status(first_slot, now)

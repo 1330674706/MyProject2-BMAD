@@ -5,7 +5,7 @@ from __future__ import annotations
 from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
 
 from src.app import admin_service, auth_service, booking_service, equipment_service
-from src.core.errors import Conflict, Validation
+from src.core.errors import Conflict, NotFound, Validation
 from src.data.db import get_db
 from src.web.auth import admin_required
 from src.web.csrf import validate_csrf
@@ -105,6 +105,82 @@ def edit_booking(id):
             selected_slots=submitted_slots,
         )
     return redirect(url_for("admin.week", week=week_monday), code=303)
+
+
+def _render_lock(
+    error=None,
+    *,
+    equipment_id,
+    day,
+    selected_slots=None,
+    conflicted_slots=(),
+):
+    db = get_db()
+    try:
+        view = admin_service.build_lock_view(
+            db,
+            equipment_id=equipment_id,
+            viewer_id=g.user["id"],
+            day=day,
+            selected_slots=selected_slots or (),
+            conflicted_slots=conflicted_slots,
+        )
+    except Validation as bad_day:
+        view = admin_service.build_lock_view(
+            db,
+            equipment_id=equipment_id,
+            viewer_id=g.user["id"],
+            selected_slots=selected_slots or (),
+            conflicted_slots=conflicted_slots,
+        )
+        error = error or bad_day
+    if error is None:
+        return render_template("admin_lock.html", view=view)
+    return render_error(error, "admin_lock.html", view=view)
+
+
+@bp.get("/equipments/<id>/lock")
+@admin_required
+def lock_form(id):
+    return _render_lock(equipment_id=id, day=request.args.get("date"))
+
+
+@bp.post("/equipments/<id>/lock")
+@admin_required
+def lock_slots(id):
+    validate_csrf()
+    day = (request.form.get("date") or "").strip()
+    submitted = request.form.getlist("slot")
+    try:
+        validated = booking_service.lock_slots(get_db(), g.user["id"], id, submitted)
+        week = admin_service.week_monday_for_slots(validated)
+    except Conflict as error:
+        return _render_lock(
+            error,
+            equipment_id=id,
+            day=day,
+            selected_slots=submitted,
+            conflicted_slots=error.conflict_slots,
+        )
+    except Validation as error:
+        return _render_lock(error, equipment_id=id, day=day, selected_slots=submitted)
+    return redirect(url_for("admin.week", week=week), code=303)
+
+
+@bp.post("/equipments/<id>/unlock")
+@admin_required
+def unlock_slots(id):
+    validate_csrf()
+    day = (request.form.get("date") or "").strip()
+    submitted = request.form.getlist("slot")
+    try:
+        validated = booking_service.unlock_slots(get_db(), g.user["id"], id, submitted)
+        week = admin_service.week_monday_for_slots(validated)
+    except NotFound as error:
+        return _render_lock(error, equipment_id=id, day=day, selected_slots=submitted)
+    except Validation as error:
+        return _render_lock(error, equipment_id=id, day=day, selected_slots=submitted)
+    return redirect(url_for("admin.week", week=week), code=303)
 
 
 @bp.get("/users")

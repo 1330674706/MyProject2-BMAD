@@ -7,6 +7,10 @@ INSERT_OCCUPANCY = (
     " VALUES (?, ?, ?, ?, ?)"
 )
 DELETE_FOR_BOOKING = "DELETE FROM occupancy WHERE booking_id = ? AND kind = 'booking'"
+DELETE_LOCKS = (
+    "DELETE FROM occupancy WHERE equipment_id = ? AND kind = 'lock'"
+    " AND slot_start IN ({placeholders})"
+)
 LIST_FOR_BOOKING = (
     "SELECT equipment_id, slot_start, kind, booking_id FROM occupancy"
     " WHERE booking_id = ? ORDER BY slot_start"
@@ -59,6 +63,17 @@ def list_for_booking(conn, booking_id):
 def delete_occupancy(conn, booking_id) -> int:
     """删除该预约的 booking 占用行；锁定行 booking_id 为 NULL，不受影响。"""
     return conn.execute(DELETE_FOR_BOOKING, (booking_id,)).rowcount
+
+
+def delete_lock_rows(conn, equipment_id, slots) -> int:
+    """只删锁定行；rowcount 供用例判断"无锁可解"是否 404。"""
+    if not slots:
+        return 0
+    placeholders = ", ".join("?" for _ in slots)
+    return conn.execute(
+        DELETE_LOCKS.format(placeholders=placeholders),
+        (equipment_id, *slots),
+    ).rowcount
 
 
 def select_taken(conn, equipment_id, slots, exclude_booking_id=None):

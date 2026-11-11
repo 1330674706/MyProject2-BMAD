@@ -6,8 +6,9 @@
     {% if cell.owner_student_no %}<span class="slot-owner"><a href="{{ url_for('admin.users', student_no=cell.owner_student_no) }}">学号 {{ cell.owner_student_no }}</a></span>{% endif %}
     {% if cell.anomaly %}<span class="slot-anomaly" data-anomaly-slot="{{ cell.start }}">{{ cell.anomaly_label or "异常" }}</span>{% endif %}
     {% if cell.conflicted %}<span class="slot-conflict">已失效</span>{% endif %}
-    {% if selectable_form and cell.editable %}
-    <input type="checkbox" name="slot" value="{{ cell.start }}" aria-label="{{ cell.local_time }} {{ slot_action|default('开始预约') }}"{% if cell.selected %} checked{% endif %}>
+    {% set show_checkbox = (selectable_form and cell.editable) or (lock_form and cell.lockable) %}
+    {% if show_checkbox %}
+    <input type="checkbox" name="slot" value="{{ cell.start }}" aria-label="{{ cell.local_time }} {{ cell.label }} {{ slot_action|default('开始预约') }}"{% if cell.selected %} checked{% endif %}>
     {% endif %}
   </li>
   {% endfor %}

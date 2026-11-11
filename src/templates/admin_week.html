@@ -44,7 +44,7 @@
     <tbody>
       {% for equipment in view.equipments %}
       <tr>
-        <th scope="row">{{ equipment.equipment_name }}<br><span class="week-date">{{ equipment.equipment_id }}</span></th>
+        <th scope="row">{{ equipment.equipment_name }}<br><span class="week-date">{{ equipment.equipment_id }}</span><br><a href="{{ url_for('admin.lock_form', id=equipment.equipment_id, date=view.monday) }}" aria-label="锁定或解锁 {{ equipment.equipment_name }} 的时段">锁定/解锁</a></th>
         {% for day in equipment.days %}
         <td data-day="{{ day.weekday }} {{ day.date }}">
           <div class="week-grid" data-grid-equipment="{{ equipment.equipment_id }}" data-grid-day="{{ day.date }}">

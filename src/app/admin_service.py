@@ -93,6 +93,15 @@ class BookingEditView:
     grid: object
 
 
+@dataclass(frozen=True)
+class EquipmentLockView:
+    equipment_id: str
+    equipment_name: str
+    day: str
+    week_monday: str
+    grid: object
+
+
 def _slot_label(slot_start: str) -> str:
     return utc_to_local(slot_start).strftime("%m-%d %H:%M")
 
@@ -305,6 +314,54 @@ def booking_week_monday(conn, booking_id) -> str:
         raise NotFound("预约不存在或已取消")
     day = utc_to_local(rows[0]["slot_start"]).date().isoformat()
     return week_bounds_utc(day)[0]
+
+
+def week_monday_for_slots(slots) -> str:
+    """按真正写入的 slot 推导回跳周，不信任表单里的展示日期。"""
+    if not slots:
+        raise Validation("请至少选择 1 个 slot")
+    try:
+        return week_bounds_utc(utc_to_local(slots[0]).date().isoformat())[0]
+    except ValueError:
+        raise Validation("slot 时刻不存在") from None
+
+
+def build_lock_view(
+    conn,
+    *,
+    equipment_id,
+    viewer_id,
+    day=None,
+    selected_slots=(),
+    conflicted_slots=(),
+    now=None,
+) -> EquipmentLockView:
+    """组装锁定页：设备信息 + 单日六态格子；可勾选范围由 SlotCell.lockable 决定。"""
+    equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
+    if equipment is None or not equipment["active"]:
+        raise NotFound("设备不存在")
+    now_text = now or slot_service.now_utc()
+    day_text = (day or "").strip() or utc_to_local(now_text).date().isoformat()
+    grid = slot_service.build_slot_grid(
+        conn,
+        equipment_id=equipment_id,
+        day=day_text,
+        viewer_id=viewer_id,
+        now=now_text,
+        conflicted_slots=conflicted_slots,
+        selected_slots=selected_slots,
+    )
+    try:
+        week_monday = week_bounds_utc(grid.day)[0]
+    except ValueError:
+        raise Validation("日期格式不正确") from None
+    return EquipmentLockView(
+        equipment_id=equipment["id"],
+        equipment_name=equipment["name"],
+        day=grid.day,
+        week_monday=week_monday,
+        grid=grid,
+    )
 
 
 def search_student_bookings(conn, student_no) -> StudentSearch:

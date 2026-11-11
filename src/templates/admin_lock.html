@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}锁定与解锁{% endblock %}
+{% block heading %}锁定与解锁{% endblock %}
+{% block page_class %} page--wide{% endblock %}
+{% block content %}
+{% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+{% if view %}
+<section class="lock-toolbar">
+  <form class="lock-picker" method="get" action="{{ url_for('admin.lock_form', id=view.equipment_id) }}">
+    <label>日期
+      <input type="date" name="date" value="{{ view.day }}" required>
+    </label>
+    <button type="submit">查看</button>
+  </form>
+  <a class="lock-back" href="{{ url_for('admin.week', week=view.week_monday) }}">返回周视图</a>
+</section>
+<p class="hint">{{ view.equipment_name }} · 开放时间 {{ view.grid.open_start }}–{{ view.grid.open_end }}，每格 30 分钟。只能锁定未来 7 天内的开放时段；勾选空闲格后点“锁定所选”，勾选已锁定格后点“解锁所选”。</p>
+<form class="lock-form" method="post" action="{{ url_for('admin.lock_slots', id=view.equipment_id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="date" value="{{ view.day }}">
+  {% with grid=view.grid, lock_form=True, slot_action="锁定/解锁该时段" %}{% include "_slot_grid.html" %}{% endwith %}
+  <button type="submit">锁定所选</button>
+  <button type="submit" formaction="{{ url_for('admin.unlock_slots', id=view.equipment_id) }}">解锁所选</button>
+</form>
+<ul class="slot-legend">
+  <li class="slot-key is-free">空闲</li>
+  <li class="slot-key is-booked_by_self">我的预约</li>
+  <li class="slot-key is-booked_by_other">已被占用</li>
+  <li class="slot-key is-locked">已锁定</li>
+  <li class="slot-key is-closed_past">已开始</li>
+  <li class="slot-key is-closed_window">超出可约窗口</li>
+</ul>
+{% endif %}
+{% endblock %}

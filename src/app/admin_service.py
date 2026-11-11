@@ -89,7 +89,6 @@ class BookingEditView:
     equipment_id: str
     equipment_name: str
     week_monday: str
-    slots: tuple[str, ...]
     slots_display: tuple[str, ...]
     grid: object
 
@@ -255,6 +254,7 @@ def build_booking_edit_view(
     day=None,
     selected_slots=None,
     conflicted_slots=(),
+    conflict_pending=False,
 ) -> BookingEditView:
     """组装改单页：预约归属、当前时段与按日复用的六态格子。
 
@@ -281,8 +281,9 @@ def build_booking_edit_view(
         viewer_id=viewer_id,
         conflicted_slots=conflicted_slots,
         selected_slots=selected,
+        own_slots=slots,
     )
-    if not conflicted_slots:
+    if not conflicted_slots and not conflict_pending:
         grid = replace(grid, conflict_scope="none")
     owner = user_repo.get_by_id(conn, booking["owner_id"])
     week_monday = week_bounds_utc(utc_to_local(slots[0]).date().isoformat())[0]
@@ -292,7 +293,6 @@ def build_booking_edit_view(
         equipment_id=equipment["id"],
         equipment_name=equipment["name"],
         week_monday=week_monday,
-        slots=slots,
         slots_display=tuple(_slot_label(slot_start) for slot_start in slots),
         grid=grid,
     )

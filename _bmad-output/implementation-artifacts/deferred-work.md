@@ -85,3 +85,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
   summary: 在按学号检索结果表里也提供改单入口。
   evidence: `admin_users.html` 的预约行与周视图同源（`StudentSearch.bookings`），但目前只有周视图有“改单”链接；是否扩大入口属人工范围决定，补测试时在 `/admin/users` 断言即可。
+
+（第二轮评审补登）
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
+  summary: 无变更的改单也会写一条 `booking_edit` 审计，缺 no-op 守卫。
+  evidence: 改单页预勾原时段，管理员原样提交即 303 且审计新增 1 行，`before_json` 与 `after_json` 只差 `updated_at`。守卫属 `booking_service.edit_booking()`（Story 2.4），本 Story 只做接线，故不在本轮修。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
+  summary: R5 先红后绿证据同样不可复核，需与 2.4 一并补齐。
+  evidence: `git show --stat 50dae79` 显示 `tests/test_admin_edit_booking.py | 571 +++` 与实现同处一个 commit，spec 的"13 failed"只有自述。

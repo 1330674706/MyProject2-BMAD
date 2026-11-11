@@ -42,6 +42,7 @@ def _render_edit(
     conflicted_slots=(),
 ):
     db = get_db()
+    conflict_pending = isinstance(error, Conflict)
     try:
         view = admin_service.build_booking_edit_view(
             db,
@@ -50,12 +51,16 @@ def _render_edit(
             day=day,
             selected_slots=selected_slots,
             conflicted_slots=conflicted_slots,
+            conflict_pending=conflict_pending,
         )
     except Validation as bad_day:
         view = admin_service.build_booking_edit_view(
             db,
             booking_id=booking_id,
             viewer_id=g.user["id"],
+            selected_slots=selected_slots,
+            conflicted_slots=conflicted_slots,
+            conflict_pending=conflict_pending,
         )
         error = error or bad_day
     if error is None:
@@ -93,7 +98,12 @@ def edit_booking(id):
             conflicted_slots=error.conflict_slots,
         )
     except Validation as error:
-        return _render_edit(error, booking_id=id, day=day)
+        return _render_edit(
+            error,
+            booking_id=id,
+            day=day,
+            selected_slots=submitted_slots,
+        )
     return redirect(url_for("admin.week", week=week_monday), code=303)
 
 

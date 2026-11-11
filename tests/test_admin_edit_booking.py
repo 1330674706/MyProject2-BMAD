@@ -509,6 +509,8 @@ def test_conflict_body_lists_every_conflicting_slot(app, db_path, clock):
 
     assert resp.status_code == 409
     assert utc_at(DAY, "15:00") in html and locked_slot in html
+    assert f'equipment_id=E1, slot_start={utc_at(DAY, "15:00")}' in html
+    assert f'equipment_id=E1, slot_start={locked_slot}' in html
     assert 'data-conflict="1"' in cell_tag(html, utc_at(DAY, "15:00"))
     assert 'data-conflict="1"' in cell_tag(html, locked_slot)
 
@@ -569,3 +571,17 @@ def test_shifted_window_overlapping_old_rows_succeeds_via_http(app, db_path, clo
     assert resp.status_code == 303
     assert [row[1] for row in occ_rows(db_path, BOOKING_ID)] == sorted(new_slots)
     assert duplicate_keys(db_path) == []
+
+def test_cross_week_edit_returns_303_to_the_original_week(app, db_path, clock):
+    seed_equipment(db_path)
+    seed_user(db_path, STUDENT_A, "2025001")
+    seed_booking(db_path, booking_id=BOOKING_ID, owner_id=STUDENT_A, times=["14:00"])
+    client = admin_client(app, db_path)
+    token = csrf_from_edit_page(client)
+    target = utc_at("2026-11-16", "08:00")
+
+    resp = post_edit(client, slots=[target], day="2026-11-16", token=token)
+
+    assert resp.status_code == 303
+    assert resp.headers["Location"] == f"/admin/week?week={WEEK}"
+    assert [row[1] for row in occ_rows(db_path, BOOKING_ID)] == [target]

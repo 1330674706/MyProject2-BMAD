@@ -50,6 +50,7 @@ class SlotCell:
     owner_student_no: str | None = None
     anomaly: bool = False
     anomaly_label: str | None = None
+    own: bool = False
 
     def __post_init__(self) -> None:
         if self.state not in SIX_STATES:
@@ -65,8 +66,10 @@ class SlotCell:
 
     @property
     def editable(self) -> bool:
-        """可提交勾选：空闲格，或本预约自己的已选格（改单时保留/顺延）。"""
-        return self.selectable or (self.selected and not self.conflicted)
+        """可提交勾选：空闲格，或本预约自己的占用格（改单时保留/顺延）。"""
+        return self.selectable or (
+            self.own and self.state == "booked_by_other" and not self.conflicted
+        )
 
 
 @dataclass(frozen=True)
@@ -136,11 +139,13 @@ def build_slot_grid(
     now=None,
     conflicted_slots=(),
     selected_slots=(),
+    own_slots=(),
 ) -> SlotGrid:
     """读取设备开放窗口与当天占用，生成六态只读视图对象。
 
     `conflicted_slots` / `selected_slots` 只用于 409 同页重渲染的展示标记，
-    不参与任何状态判定；六个合法状态不变。
+    `own_slots` 标记"本预约自己的占用格"（改单页可重选）；
+    三者都不参与任何状态判定，六个合法状态不变。
     """
     if not equipment_id:
         raise Validation("必须选择设备")
@@ -158,6 +163,7 @@ def build_slot_grid(
     window_end = add_days(now_text, WINDOW_DAYS)
     conflicted = frozenset(conflicted_slots)
     selected = frozenset(selected_slots)
+    own = frozenset(own_slots)
 
     cells = tuple(
         SlotCell(
@@ -166,6 +172,7 @@ def build_slot_grid(
             state=_resolve_state(start, now_text, window_end, occupied.get(start), viewer_id),
             conflicted=start in conflicted,
             selected=start in selected,
+            own=start in own,
         )
         for start in slots
     )

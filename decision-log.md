@@ -27,6 +27,17 @@
 - 结果：E2 补为 2.1–2.4，全项目 3 Epic / 12 Story / 88 条 AC；2.4 只交付 `app/slot_rules.validate(mode="create"|"edit")` 与服务层替换语义，3.2 只接路由与表单，消除「3.2 才能测 2.4」的倒挂；依赖图所有边均为小号→大号。
 - 验证计划：2.4 的 6 组 AC 全部带 `→ assert ...`，Story 2.4 完成后跑 `pytest tests/test_slot_rules.py`，其中「改到与自身旧集合相交」用例必须返回 303 且 `booking_id` 不变、「目标含他人占用」用例必须返回 409 且原 `occupancy` 逐行相等。
 - 证据：本条无对话截图。可倒查的书面证据：`epics.md` 第 2.4 节「为什么 2.4 值得独立成 Story」5 条理由、文末「PRD §11 回写记录（2026-11-05 已同步）」，以及 PRD §11 表内 FR-4/FR-7 行已并入 2.4。
+
+## D-004 2026-11-09 Story 1.4 只交付三件事，管理员种子记入 deferred
+
+- 类型：实质修改（缩小 Story 交付面）
+- 触发：`bmad-build` Story 1.4 启动时，用户明确「交付三件事，只做这三件」，与 `epics.md` 的 7 条 AC（含管理员种子、单 .db、复制库）不完全一致
+- 智能体建议：严格按用户给出的三项交付：一条命令启动 + `/health`、设备 CSV 幂等导入、不新增依赖且不做容器/守护/备份；管理员种子、README、复制库断言不实现
+- 判断与依据：用户指令优先于规划文档；把管理员种子塞进本轮会把「运维部署」扩成「账号初始化」，且需要新增 actor 语义。`sprint-status.yaml` 只能置 `review`（R6），由人工决定是否补做；三项之外的发现全部可追溯地记入 `deferred-work.md`，不静默丢弃
+- 结果：新增 `src/serve.py`、`src/web/health.py`、`src/seed.py`、`seed/equipment.csv`，改 `app.py`、`config.py`、`equipment_repo.py`、`equipment_service.py`；种子复用 1.2 窗口校验、单事务 upsert、变更写审计；未碰 2.1 与 `occupancy`
+- 验证计划：`tests/test_ops_startup.py` 先红后绿（7 → 16 passed），全量 73 passed；`python -m src.serve` 缺任一必需 env 时非 0 退出且不监听
+- 证据：`_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md` 的 Implementation Notes 与 Review Triage Log；`deferred-work.md` 的 6 条待办
+
 ## D-007 2026-11-09 接受 CONCERNS 门禁，逐条裁定 7 条顾虑
 
 - 类型：实质修改（不是否决）
@@ -36,6 +47,7 @@
 - 结果：当场改 5 处——architecture §8.1 的 action 名改为 `password_reset`；architecture §18 第 3 条标记为已回写；PRD §11 FR-2 的 Story 列补 1.4 与 `tests/test_ops_startup.py`；epics 1.2 元数据补 ADR-003；epics 3.3 末条 CSV 断言迁入 3.4。AC 总数保持 88 条、Story 仍 12 条，sprint-status.yaml 未重排。留待开工前的 2 条：1.2/1.3 用夹具造数、2.2 补「两个冲突 slot 都在 409 响应里」的断言（FR-5 要求返回全部冲突）。
 - 验证计划：1.1 的 build 首次跑 `pytest` 时确认重置密码写入 `action='password_reset'` 不触发 CHECK 约束；3.4 完成后确认「锁定行不出现在导出中」由 `tests/test_export_audit.py` 单独覆盖。
 - 证据：`evidence/D-007_2026-11-09-chat-gate-concerns.png`——规划对话中 Codex 给出 CONCERNS 结论与 7 条顾虑的那一屏；书面侧佐证为 `sprint-status.yaml` 的 `sprints`、`development_status` 块与本轮 5 处文档改动。
+
 ## D-008 2026-11-09 独立复审发现 P0，裁定修 9 条、暂不修 10 条
 
 - 类型：实质修改（不是否决）
@@ -45,6 +57,7 @@
 - 结果：修复范围定为 9 条——F1 改 double-submit（独立 `csrf` cookie，不用 session，否则 401 会带出 session cookie 撞 AC3）、F2 包进 `write_tx()`、F3/F4 补断言、F7 重置目标限 `student`、F8 改判 `sqlite_errorname`、F9 白名单补 `booking`/`equipment`、F11 `.gitignore` 补 `data/`、F12 删模板 `minlength`。暂不修的 10 条记入 retrospective「已知未修」。
 - 验证计划：修完 `pytest -q` 全绿，且新增「另一客户端用自己 token → 400」用例；`sprint-status.yaml` 保持 1.1 = review。
 - 证据：`evidence/D-008_2026-11-09-chat-review-findings.png`——复审对话中「审查结论 + R1–R8 核对 + P0/P1 列表」那一屏。
+
 ## D-009 2026-11-09 否决改用 HTTPS + `__Host-` Cookie，按已接受风险处置
 
 - 类型：否决
@@ -55,15 +68,6 @@
 - 验证计划：`tests/test_auth_login.py` 的 CSRF 用例保持全绿；演示时用 HTTP 访问，若评审问起，指 ADR-004 的残余风险段。
 - 证据：本条无对话截图。可倒查：`architecture.md` §8.1 CSRF 条目、`PRD.md` §7.3 已接受风险清单、`tests/test_auth_login.py` 的 CSRF 用例。
 
-## D-010 2026-11-09 Story 1.4 只交付三件事，管理员种子记入 deferred
-
-- 类型：实质修改（缩小 Story 交付面）
-- 触发：`bmad-build` Story 1.4 启动时，用户明确「交付三件事，只做这三件」，与 `epics.md` 的 7 条 AC（含管理员种子、单 .db、复制库）不完全一致
-- 智能体建议：严格按用户给出的三项交付：一条命令启动 + `/health`、设备 CSV 幂等导入、不新增依赖且不做容器/守护/备份；管理员种子、README、复制库断言不实现
-- 判断与依据：用户指令优先于规划文档；把管理员种子塞进本轮会把「运维部署」扩成「账号初始化」，且需要新增 actor 语义。`sprint-status.yaml` 只能置 `review`（R6），由人工决定是否补做；三项之外的发现全部可追溯地记入 `deferred-work.md`，不静默丢弃
-- 结果：新增 `src/serve.py`、`src/web/health.py`、`src/seed.py`、`seed/equipment.csv`，改 `app.py`、`config.py`、`equipment_repo.py`、`equipment_service.py`；种子复用 1.2 窗口校验、单事务 upsert、变更写审计；未碰 2.1 与 `occupancy`
-- 验证计划：`tests/test_ops_startup.py` 先红后绿（7 → 16 passed），全量 73 passed；`python -m src.serve` 缺任一必需 env 时非 0 退出且不监听
-- 证据：`_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md` 的 Implementation Notes 与 Review Triage Log；`deferred-work.md` 的 6 条待办
 ## D-010 2026-11-09 复审 12 条只批 3 条，7 天窗口由「首格」改为「逐格」
 
 - 类型：实质修改（不是否决）
@@ -73,6 +77,7 @@
 - 结果：F1 选「逐格判定」这一侧——网格已是逐格，改写入侧更省事且与用户直觉一致；PRD FR-4 由「首个 slot 的开始时间在未来 7 天内」改为「每个 slot 的开始时间都在未来 7 天内（首格不得早于当前时刻）」，验收项同步改为「任一 slot 超 7 天返回 4xx」。F2 补 3 条断言级测试（第 3 格冲突整单不变、3 个 lock 冲突全部列出、冲突在第 5 格时前 4 格未落库）。F5 删除 `or pre_conflicts`，冲突列表只取 ROLLBACK 后的重查结果，重查为空时返回通用文案。其余 9 条记入 `deferred-work.md`。
 - 验证计划：修完 `pytest -q` 全绿且新增 3 条 409 用例；临时库手工构造「第 3 格已占」确认 `(booking, occupancy)` 计数不变。
 - 证据：`evidence/D-010_2026-11-09-chat-triage-2-1.png`——本轮对话中「为什么只修这 3 条」与 PRD 措辞改动同屏；书面侧为 `PRD.md` FR-4 修改前后文本、`deferred-work.md` 的 9 条记录。
+
 ## D-011 2026-11-11 否决「改单可以换设备」的实现选择
 
 - 类型：否决
@@ -82,3 +87,23 @@
 - 结果：`edit_booking()` 在事务内、`validate` 之前比对 `equipment_id`，不同即 `Validation`（400），不改设备；`slot_rules` 的用例矩阵去掉「跨设备」形态，新增 `test_edit_to_another_equipment_is_validation_and_keeps_every_row`（断言 booking/occupancy 逐行不变、审计 0 条）。epics 2.4 的 AC 同步为服务层契约，并注明 HTTP `303/400/409` 由 3.2 承接；`PRD.md` §11 的 FR-7 行补 `ADR-001`。
 - 验证计划：`pytest -q` 133 passed；3.2 接路由后再验证页面层换设备返回 400 而不是 500。
 - 证据：`evidence/D-011_2026-11-11-chat-2-4-decisions.png`（复审提出三个待决策）与 `evidence/D-011_2026-11-11-chat-2-4-decisions-reply.png`（我给出的三条判断）两帧。
+
+## D-012 2026-11-11 否决「新增 display_name 列」，改为一律只显示学号
+
+- 类型：否决
+- 触发：Story 3.1 规划检查点时，Codex 指出 `user` 表只有 `student_no`、没有姓名，给出 A（新增 nullable `display_name` + 注册页收姓名 + 迁移版本 2 + 回写 Story 1.1）、B（只显示学号）、C（用「学生 + 学号」充当展示名）三个选项
+- 智能体建议：推荐 A，理由是「字面上的姓名要求不满足」。
+- 判断与依据：`PRD.md` 的 FR-7 只写「可按学号检索学生并进入其预约」，全文没有姓名要求；「姓名与学号」是我在 3.1 的指令里多写的一句，不是需求。为一个 PRD 没有的字段改 schema、加迁移版本、回写已完成并复审过的 Story 1.1，还要连带改注册页与 `user_version` 断言，代价与收益不成比例，且会引出「姓名是否唯一、能否重名」一类新问题。C 同样否决：把「学生 2025001」当展示名，会让审计与导出里出现看着像真名的假姓名，追责时比没有姓名更糟。
+- 结果：按 B 实现，管理员页面只展示学号；spec 删掉姓名要求，不新增列、不改迁移、不回写 1.1。将来若确需姓名，加一个 nullable 列即可，属增量而非返工。
+- 验证计划：3.1 的检索用例断言返回学号；`migrations/` 仍只有 001，`PRAGMA user_version` 不变。
+- 证据：`evidence/D-012_2026-11-11-chat-3-1-name-options.png`（A/B/C 三选项）与 `evidence/D-012_2026-11-11-chat-3-1-reject-schema-change.png`（选 B、否决 A 与 C）两帧。
+
+## D-013 2026-11-11 否决「400 分支丢弃已提交选择」的驳回结论
+
+- 类型：否决
+- 触发：Story 3.2 复审给出 1 条待决、9 条 patch、2 条 defer，其中「`_render_edit` 的 Validation 分支不传 `selected_slots`」被首轮判为驳回（BH-08），理由写作「规则只固定 409」
+- 智能体建议：维持现状（选项 3），接受首轮裁定，本轮登记为 defer。
+- 判断与依据：400 的语义是「填错了改一下」，不是「你不该填」；清空等于让用户重勾 8 个格子，而同一页面 409 却保留选择，两套行为用户分不清。「规则只固定 409」是把文档的沉默当成许可——文档没写不代表可以少做。验收看的是可用性，不是条文覆盖度。
+- 结果：选方案 1，`_render_edit` 的两个异常分支（Validation 与日期回退）都回传 `selected_slots`、`conflicted_slots`，与 409 统一为「一律保留提交态，冲突格额外标红」；`app.css` 的选中描边加 `:not(.is-conflict)`，保证冲突格仍是红色实线。同一轮另修 9 条 patch（`editable` 语义外溢、跨周 303、409 响应体字段等），2 条 defer 记入 `deferred-work.md`。
+- 验证计划：`tests/test_admin_edit_booking.py` 19 passed（新增跨周改单与 409 字段断言）；全量 167 passed。
+- 证据：`evidence/D-013_2026-11-11-chat-3-2-render-edit-options.png`（三个选项）与 `evidence/D-013_2026-11-11-chat-3-2-reject-bh08.png`（选 1 并说明理由）两帧。

@@ -72,9 +72,41 @@ baseline_commit: '09c2380'
 - Given 提交另一台设备，when 管理员改单，then 400（D-011），行、设备与审计都不变。
 - Given 409，when 查看响应，then 保留提交日期与网格，冲突格标出，空闲的已选格仍勾选。
 
+### Review Findings
+
+第二轮独立评审（4 层：Blind Hunter / Edge Case Hunter / Verification Gap / Acceptance Auditor），基线 `09c2380..50dae79`。
+
+- [x] [Review][Decision] `_render_edit` 的异常分支丢弃提交态，且页面把**原始时段**显示为已勾选 — Validation 分支（`src/web/admin.py:96`）不传 `selected_slots`，于是形状错误（不连续、9 格、2 小时截止）的 400 页把旧 slot 勾上，错误文案与已勾状态互相矛盾；日期解析失败的回退分支（`src/web/admin.py:54-62`）又不传 `conflicted_slots`，带冲突的这类请求会渲染出无标记网格。首轮已把“400 丢弃已提交选择”判为驳回（BH-08，理由：契约只固定 409），故此处需人工定夺：保留提交选择 / 全部清空 / 维持现状。 **已定（2026-11-11）：选项 1 — 两个异常分支都回传 selected_slots / conflicted_slots，与 409 保持同一套行为；首轮 BH-08 的驳回理由不成立（规则没写不等于禁止）。**
+- [x] [Review][Patch] `SlotCell.editable` 判的是“调用方传入的 selected”，不是“本预约自己的格”，并随共享模板外溢到学生页 [src/app/slot_service.py:67]
+- [x] [Review][Patch] 选中态描边覆盖冲突描边：`[data-selected="1"]` 与 `.is-conflict` 同特异性但在后，409 页冲突格丢红色实线轮廓 [src/static/app.css:182]
+- [x] [Review][Patch] “303 回原周”没有能区分原周与提交日的测试：唯一 Location 断言里原周与目标同属一周 [tests/test_admin_edit_booking.py:299]
+- [x] [Review][Patch] R5 先红后绿证据不可从历史复核（测试与实现同一 commit），且未像 2.4 那样登记到 `deferred-work.md` [_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md:58]
+- [x] [Review][Patch] `if not conflicted_slots: replace(..., "none")` 把“冲突列表为空”当成“无冲突”，空 `conflict_slots` 的 409 会渲染一屏 `data-conflict="0"` [src/app/admin_service.py:286]
+- [x] [Review][Patch] 改单页图例缺“已选/原时段”键，却列了管理员永远看不到的“我的预约” [src/templates/admin_booking_edit.html:33]
+- [x] [Review][Patch] 改单页文案让管理员“取消后重新预约”，但 `/admin/*` 没有任何取消入口 [src/templates/admin_booking_edit.html:14]
+- [x] [Review][Patch] `BookingEditView.slots` 是死字段（模板只用 `slots_display`） [src/app/admin_service.py:92]
+- [x] [Review][Patch] 409 响应体“必须列出冲突的 `equipment_id` 与 `slot_start`”在本 Story 测试里没有断言（`locked_slot in html` 因每格都带 `data-slot` 而恒真） [tests/test_admin_edit_booking.py:485]
+- [x] [Review][Defer] 无变更的改单也会写一条 `booking_edit` 审计 [src/app/admin_service.py:277] — deferred: 服务层（2.4）无 no-op 守卫，本 Story 只接线；预勾原时段让误提交变容易，但不是本改动引入
+- [x] [Review][Defer] `PRD.md` FR-7 与 `epics.md` Story 3.2 仍写“可改到另一台设备”，与 D-011 相反 [PRD.md:183] — deferred: 规划工件漂移，已登记，需人工按 R7 同步 §11
+
+Rejected:
+
+- `false` 跨周改单 303 落到旧周是“错周” — 冻结的 Intent/矩阵 EDIT_OK 明确要求回“原周”，代码与契约一致；UX 取舍不属缺陷。
+- `false` 模板 `{% if error and view.grid.conflict_scope == "page" %}` 违反 R1 — 只按服务层算出的枚举选横幅，不判冲突；`_slot_grid.html` 的 `cell.conflicted` 自 1.3 起是同一惯例。
+- `false` `replace(grid, conflict_scope="none")` 造成双写/文档不一致 — 该调用点就是要清掉“因 selected 非空→page”的哨兵，未给出任何受影响调用方的错误结果。
+- `low` 整页冲突横幅只能由 UI 造不出的请求触发（测试伪造了它） — 属防御性分支，无害；改成带冲突日链接需重做入口。
+- `low` 400 形状错误（0 格 / 断档 / 9 格 / 2 小时截止）缺 HTTP 级用例 — 规则由 2.4 服务层测试覆盖，路由的 Validation→400 已被换设备与缺 CSRF 两条钉住。
+- `low` 成功 303 后无任何确认反馈 — 项目无 flash 设施，补上属新增面。
+- `low` `test_week_view_links_to_edit_form_for_each_booking` 只播种 1 条 — 断言的就是“存在入口”，命名夸大不影响保护力。
+- `low` slot 标签 `%m-%d %H:%M` 无年份/星期 — 与 2.3/3.1 既有展示约定一致。
+- `low` “改单”链接无可区分的无障碍名、`_slot_grid.html` 单行超长 — 纯外观，改动波及每行。
+- `low` 日期输入无 min/max、页面不展示 7 天窗口与 2 小时截止 — 在模板算边界即触碰 R4/R1，代价高于收益。
+- `false` 测试断言 `"11-11 14:00" in html` 钉住展示文案 — PRESELECT 矩阵要求“摘要展示本地时段”，该断言正是契约本身。
+- `false` spec 自身矛盾（`slot_service.py` 既在改动清单又在“不改”清单） / `Spec Change Log` 为空 / AC 计数 5 vs 7 — 修法都是改被测 spec 文本，按规则直接驳回。
+
 ## Implementation Notes
 
-- 2026-11-11：先写 `tests/test_admin_edit_booking.py`（初版 13 条），在路由未接线时跑出 13 failed（全部 404），实现后转绿；评审补齐后 18 passed。
+- 2026-11-11（第二轮评审收口）：`_render_edit` 的两个异常分支都回传提交集合；`SlotCell.own` + `build_slot_grid(own_slots=)` 把可重选范围收回“本预约自己的占用格”，学生页恢复 free-only；`conflict_pending` 时 409 不再把作用域归零；补 CSS `:not(.is-conflict)`、图例与跨周 303 用例（19 passed / 167 passed）。- 2026-11-11：先写 `tests/test_admin_edit_booking.py`（初版 13 条），在路由未接线时跑出 13 failed（全部 404），实现后转绿；评审补齐后 18 passed。
 - 改单页的原时段格子状态是 `booked_by_other`（管理员不是 owner）；`SlotCell.editable` 让本预约的已选格也能勾选，管理员可保留 14:30 顺延到 15:00，而不必整段重选。
 - 原周不再由表单回显：`booking_week_monday()` 在写之前从原预约首个 slot 推导周一，扫码/检索进入也能 303 回原周，非法 `week` 不再造成“写入成功但落地 400”。
 - 无冲突时 `conflict_scope` 归零；冲突格落在提交日之外时，改单页显示整页冲突提示，不留“看起来没问题”的网格。

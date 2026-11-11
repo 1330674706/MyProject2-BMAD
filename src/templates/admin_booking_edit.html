@@ -11,7 +11,7 @@
 {% elif error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
 <section class="booking-edit-summary">
   <p class="hint">预约 {{ view.booking_id }}，学号 {{ view.student_no }}，设备 {{ view.equipment_name }}（{{ view.equipment_id }}），原时段 {{ view.slots_display|join("、") }}。</p>
-  <p class="hint">改单只调整时段，设备不可更换；需要换设备请取消后重新预约。</p>
+  <p class="hint">改单只调整时段，设备不可更换；换设备需由学生取消后重新预约。</p>
   <p class="hint"><a href="{{ url_for('admin.week', week=view.week_monday) }}">返回该周视图</a></p>
 </section>
 <form class="slot-filter" method="get" action="{{ url_for('admin.edit_booking_form', id=view.booking_id) }}">
@@ -32,11 +32,11 @@
 </form>
 <ul class="slot-legend">
   <li class="slot-key is-free">空闲</li>
-  <li class="slot-key is-booked_by_self">我的预约</li>
   <li class="slot-key is-booked_by_other">已被占用</li>
   <li class="slot-key is-locked">已锁定</li>
   <li class="slot-key is-closed_past">已开始</li>
   <li class="slot-key is-closed_window">超出可约窗口</li>
+  <li class="slot-key is-selected">原时段/已选</li>
 </ul>
 {% endif %}
 {% endblock %}

@@ -81,7 +81,7 @@ development_status:
 
   epic-3: in-progress
   3-1-管理员本周视图与按学号检索:done
-  3-2-管理员改单: review
+  3-2-管理员改单: done
   3-3-锁定与解锁-slot: backlog
   3-4-自然周-csv-导出与追加式操作日志: backlog
   epic-3-retrospective: optional

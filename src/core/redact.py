@@ -20,3 +20,24 @@ def dump_fields(target_type: str, values: dict) -> str:
     if unexpected:
         raise ValueError(f"{target_type} 审计字段不在白名单: {sorted(unexpected)}")
     return json.dumps(values, ensure_ascii=False, sort_keys=True)
+
+
+def filter_stored(target_type: str, raw: str | None) -> str:
+    """读取既有审计 JSON 时按同一白名单再过滤，返回可安全渲染的文本。
+
+    写入端已用 `dump_fields()` 把关；读取端再过滤一次，保证历史数据或外部
+    写入的额外字段不会经由日志页泄露。
+    """
+    if not raw:
+        return ""
+    try:
+        values = json.loads(raw)
+    except (TypeError, ValueError):
+        return ""
+    if not isinstance(values, dict):
+        return ""
+    allowed = ALLOWED_FIELDS.get(target_type)
+    if allowed is None:
+        return ""
+    kept = {key: value for key, value in values.items() if key in allowed}
+    return json.dumps(kept, ensure_ascii=False, sort_keys=True)

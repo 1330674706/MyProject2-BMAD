@@ -30,6 +30,16 @@ LIST_IN_WEEK = (
     + " WHERE o.slot_start >= ? AND o.slot_start < ?"
     " ORDER BY b.created_at, b.id, o.slot_start"
 )
+LIST_WEEK_EXPORT = (
+    "SELECT e.name AS equipment_name, o.slot_start, u.student_no, b.id AS booking_id"
+    " FROM occupancy AS o"
+    " JOIN booking AS b ON b.id = o.booking_id"
+    " JOIN user AS u ON u.id = b.owner_id"
+    " JOIN equipment AS e ON e.id = o.equipment_id"
+    " WHERE o.kind = 'booking' AND o.booking_id IS NOT NULL"
+    " AND o.slot_start >= ? AND o.slot_start < ?"
+    " ORDER BY o.slot_start, e.name, b.id"
+)
 
 
 def insert_booking(conn, *, booking_id, owner_id, equipment_id, created_at, updated_at) -> None:
@@ -55,6 +65,11 @@ def update_booking(conn, *, booking_id, equipment_id, updated_at) -> int:
 def list_in_week(conn, start_utc, end_utc):
     """返回自然周内每条预约占用行，带学生学号与设备名。"""
     return conn.execute(LIST_IN_WEEK, (start_utc, end_utc)).fetchall()
+
+
+def list_week_export_rows(conn, start_utc, end_utc):
+    """返回自然周内可导出的预约占用行：只含 kind='booking'，按 slot 排序。"""
+    return conn.execute(LIST_WEEK_EXPORT, (start_utc, end_utc)).fetchall()
 
 
 def list_for_owners(conn, owner_ids):

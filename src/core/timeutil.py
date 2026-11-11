@@ -27,6 +27,11 @@ def add_days(value: str, days: int) -> str:
     return (parse_utc(value) + timedelta(days=days)).strftime(UTC_FORMAT)
 
 
+def add_minutes_utc(value: str, minutes: int) -> str:
+    """UTC 文本加分钟数，返回新的 20 字符 UTC 文本（slot 结束时刻由服务端算）。"""
+    return (parse_utc(value) + timedelta(minutes=minutes)).strftime(UTC_FORMAT)
+
+
 def strictly_later_utc(previous: str, candidate: str) -> str:
     """返回严格晚于 previous 的 UTC 文本；同一秒内至少前进 1 秒。"""
     previous_moment = parse_utc(previous)

@@ -19,7 +19,7 @@
 ## 关键落点
 
 - 入口：`python -m src.serve`（`src/serve.py`）；应用工厂 `app.py`；种子 `python -m src.seed`。
-- 唯一写入口：`src/app/booking_service.py` 的四个用例（创建/改单/锁定/取消）→ `src/data/occupancy_repo.py` 的 `insert_occupancy()` / `delete_occupancy()`；其他模块直接 INSERT/DELETE `occupancy` 即越界。
+- 唯一写入口：`src/app/booking_service.py` 的五个用例（创建/改单/锁定/解锁/取消）→ `src/data/occupancy_repo.py` 的 `insert_occupancy()` / `delete_occupancy()` / `delete_lock_rows()`；其他模块直接 INSERT/DELETE `occupancy` 即越界。
 - 状态码唯一映射点：`src/web/errors.py`；脱敏唯一入口：`src/core/redact.py`（字段白名单，不用黑名单过滤 `password`）。
 - 约束原文：`architecture.md` §4 不变量、§5 ADR-001、§9 ADR-005、§11 一致性约定、§16 禁止表；Story 与 AC：`epics.md`；溯源：`PRD.md` §11。
 - 上列 `src/` 路径来自 `architecture.md` §13，代码尚未落地；首次 refresh 以实际文件为准。

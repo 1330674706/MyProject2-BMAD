@@ -21,6 +21,10 @@
   <a href="{{ url_for('admin.week') }}">回到本周</a>
 </nav>
 <p class="hint">自然周按周一 00:00 至下周一 00:00（左闭右开），格子状态来自统一 slot 视图。</p>
+<p class="week-actions">
+  <a href="{{ url_for('admin.export_week', week=view.monday) }}">导出该周 CSV</a>
+  <a href="{{ url_for('admin.audit_log') }}">操作日志</a>
+</p>
 
 {% if view.anomaly_slots %}
 <section class="week-anomalies" data-anomaly-summary="1" role="status">

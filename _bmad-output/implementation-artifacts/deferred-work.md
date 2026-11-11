@@ -113,3 +113,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
   summary: R5 先红后绿证据不可复核，需与 2.4/3.2 一并补齐。
   evidence: `git show --stat f4a31a3` 显示 `tests/test_admin_lock.py | 498 +++` 与实现同处一个 commit；spec 既写"首跑 12 failed / 1 passed"，又写红灯证据无法跨工作树共享，仓库内无归档。本轮评审补的 3 条行为修正是先红后绿的（OverflowError、404 文案、回跳周），但 Story 主体实现的红灯仍只有自述。
+
+## Deferred from: code review of spec-3-4-export-audit.md (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-export-audit.md`
+  summary: 把审计页 user/booking 的 `target_id` 解析成学号或“设备 + slot”，而不是只显示 uuid。
+  evidence: FR-8 只要求可追溯；当前操作人已显示学号、对象仍保留原始 uuid。补解析需增加仓储 JOIN 与新展示契约，属后续增强。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-export-audit.md`
+  summary: 为操作日志补翻页或按操作人/动作筛选，避免 200 条上限后历史不可达。
+  evidence: PRD 与本 Story 只要求“查看追加式日志”，未规定分页；当前页面显示最近 200 条与总数提示。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-export-audit.md`
+  summary: 记录“谁在什么时候导出了哪一周”的导出审计。
+  evidence: `audit_log.action` 的 CHECK 枚举不含 `export`，新增需迁移与 ADR；本 Story 明确不改 schema，导出仅由 HTTP 访问日志留痕。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-export-audit.md`
+  summary: 把重复的 `connect/seed_user/seed_equipment/login_as` 测试脚手架提到 `tests/conftest.py`。
+  evidence: 本 Story 的测试文件是第 7 份复制；仓库级夹具重构会触碰既有测试，不在本 Story 改动面内。

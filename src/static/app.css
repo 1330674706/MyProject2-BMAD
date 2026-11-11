@@ -208,6 +208,17 @@ button:disabled { background: #6b7280; cursor: not-allowed; }
 .week-nav a,
 .week-search-link { color: var(--accent); }
 
+.week-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+.week-actions a { color: var(--accent); }
+
+.audit-table code { word-break: break-all; font-size: 0.78rem; }
+
 .week-anomalies {
   padding: 0.6rem 0.75rem;
   margin: 0.75rem 0 1rem;

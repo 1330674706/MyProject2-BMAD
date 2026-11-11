@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
+from flask import Blueprint, Response, current_app, g, redirect, render_template, request, url_for
 
-from src.app import admin_service, auth_service, booking_service, equipment_service
+from src.app import (
+    admin_service,
+    audit,
+    auth_service,
+    booking_service,
+    equipment_service,
+    export_service,
+)
 from src.core.errors import Conflict, NotFound, Validation
 from src.data.db import get_db
 from src.web.auth import admin_required
@@ -12,6 +19,31 @@ from src.web.csrf import validate_csrf
 from src.web.errors import render_error
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+@bp.get("/export")
+@admin_required
+def export_week():
+    try:
+        export = export_service.build_week_export(get_db(), week=request.args.get("week"))
+    except Validation as error:
+        return render_error(
+            error,
+            "admin_week.html",
+            view=None,
+            selected_week=(request.args.get("week") or "").strip(),
+        )
+    return Response(
+        export.body,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{export.filename}"'},
+    )
+
+
+@bp.get("/audit")
+@admin_required
+def audit_log():
+    return render_template("admin_audit.html", view=audit.list_audit(get_db()))
 
 
 @bp.get("/week")

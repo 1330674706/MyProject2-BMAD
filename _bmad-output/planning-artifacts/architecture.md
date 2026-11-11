@@ -7,7 +7,7 @@ paradigm: 分层单体 + 事务脚本
 scope: MyProject2 首版运行时结构（FR-1..FR-8 / NFR-1..NFR-4）
 status: final
 created: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-11
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, NFR-1, NFR-2, NFR-3, NFR-4]
 sources:
   - _bmad-output/planning-artifacts/PRD.md
@@ -57,7 +57,7 @@ flowchart TB
 1. 依赖只能向下：`web → app → data → SQLite`。`data` 不得 import `web` 或 `app`，`app` 不得 import `web`。
 2. 模板不执行业务：`templates/` 只消费路由传入的只读视图对象，不查库、不算占用状态、不拼 SQL。
 3. `data/` 不抛 HTTP 异常：仓储只返回领域对象或抛 `core/errors.py` 里的 `Conflict` / `NotFound` / `Forbidden`；HTTP 状态码只在 `web/` 一处映射。
-4. 写 `occupancy` 只有一个入口：`app/booking_service.py` 的四个用例（创建 / 改单 / 锁定 / 取消），统一经 `data/occupancy_repo.py` 的 `insert_occupancy()` 与 `delete_occupancy()`。任何其他模块直接 INSERT/DELETE `occupancy` 都算越界——这是 ADR-001 能被验证的前提。
+4. 写 `occupancy` 只有一个入口：`app/booking_service.py` 的五个用例（创建 / 改单 / 锁定 / 解锁 / 取消），统一经 `data/occupancy_repo.py` 的 `insert_occupancy()`、`delete_occupancy()` 与 `delete_lock_rows()`。任何其他模块直接 INSERT/DELETE `occupancy` 都算越界——这是 ADR-001 能被验证的前提。
 
 ## 3. 系统边界
 
@@ -676,15 +676,21 @@ flowchart LR
 | POST | `/bookings` | 登录 | `booking`、`occupancy`、`audit_log` |
 | GET | `/bookings/mine` | 登录 | 读 |
 | POST | `/bookings/<id>/cancel` | 登录 + 归属 | `booking`、`occupancy`、`audit_log` |
-| GET | `/admin/week` | 管理员 | 读 |
-| POST | `/admin/bookings/<id>/edit` | 管理员 | `booking`、`occupancy`、`audit_log` |
+| GET | `/admin/week?week=` | 管理员 | 读 |
+| GET | `/admin/equipments` | 管理员 | 读 |
+| POST | `/admin/equipments` | 管理员 | `equipment`、`audit_log` |
+| POST | `/admin/equipments/<id>/window` | 管理员 | `equipment`、`audit_log` |
+| GET | `/admin/equipments/<id>/lock` | 管理员 | 读 |
 | POST | `/admin/equipments/<id>/lock` | 管理员 | `occupancy`、`audit_log` |
 | POST | `/admin/equipments/<id>/unlock` | 管理员 | `occupancy`、`audit_log` |
-| POST | `/admin/equipments/<id>/window` | 管理员 | `equipment`、`audit_log` |
+| GET | `/admin/bookings/<id>/edit` | 管理员 | 读 |
+| POST | `/admin/bookings/<id>/edit` | 管理员 | `booking`、`occupancy`、`audit_log` |
+| GET | `/admin/users?student_no=` | 管理员 | 读 |
 | POST | `/admin/users/<id>/reset-password` | 管理员 | `user`、`audit_log` |
-| POST | `/admin/users/<id>/deactivate` | 管理员 | `user`、`audit_log` |
 | GET | `/admin/export?week=` | 管理员 | 读 |
 | GET | `/admin/audit` | 管理员 | 读 |
+
+（`deactivate` 停用账号未实现，也不在本版 PRD 的 FR 清单内，已移入 §17 Deferred。）
 
 免鉴权清单只有三项：`/health`、`/register`、`/login`。其余一律 `@login_required`，`/admin/*` 一律 `@admin_required` 叠加。
 
@@ -719,6 +725,7 @@ flowchart LR
 | 学生自助改约 | 首版只允许取消后重约（PRD §6） | 取消率明显偏高时 |
 | 结构化日志与指标 | 单机、单进程，stdout 加 `/health` 足够 | 出现难以复现的线上问题时 |
 | 容器化与进程守护 | 见 §15 的理由；与"一条命令"冲突 | 迁移到多机部署时 |
+| 停用账号（`POST /admin/users/<id>/deactivate`） | 本版 PRD 无此 FR；1 名管理员可当面处理，取消预约已覆盖主要场景 | PRD 增加账号停用需求时 |
 
 ## 18. 待确认
 

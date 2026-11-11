@@ -65,21 +65,21 @@ sprints:
       - "3-4-自然周-csv-导出与追加式操作日志"
 
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-学号注册-登录与管理员重置默认密码:done
   1-2-设备清单-开放时间维护与-slot-派生: done
   1-3-逐-slot-占用状态视图: done
   1-4-单文件部署-一条命令启动与种子导入: done
   epic-1-retrospective: optional
 
-  epic-2: in-progress
+  epic-2: done
   2-1-提交连续-slot-预约:done
   2-2-冲突整单原子拒绝与并发裁决: done
   2-3-我的预约与取消: done
   2-4-连续多-slot-选择与改单边界: done
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-管理员本周视图与按学号检索:done
   3-2-管理员改单: done
   3-3-锁定与解锁-slot: done

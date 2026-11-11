@@ -7,3 +7,4 @@ __pycache__/
 .pytest_tmp*/
 pytest_tmp_run/
 _bmad/render/
+_expA/

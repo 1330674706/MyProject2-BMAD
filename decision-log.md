@@ -107,3 +107,13 @@
 - 结果：选方案 1，`_render_edit` 的两个异常分支（Validation 与日期回退）都回传 `selected_slots`、`conflicted_slots`，与 409 统一为「一律保留提交态，冲突格额外标红」；`app.css` 的选中描边加 `:not(.is-conflict)`，保证冲突格仍是红色实线。同一轮另修 9 条 patch（`editable` 语义外溢、跨周 303、409 响应体字段等），2 条 defer 记入 `deferred-work.md`。
 - 验证计划：`tests/test_admin_edit_booking.py` 19 passed（新增跨周改单与 409 字段断言）；全量 167 passed。
 - 证据：`evidence/D-013_2026-11-11-chat-3-2-render-edit-options.png`（三个选项）与 `evidence/D-013_2026-11-11-chat-3-2-reject-bh08.png`（选 1 并说明理由）两帧。
+
+## D-014 2026-11-11 否决「上线前直接加邮件提醒」与 `.ics` 桥接
+
+- 类型：否决
+- 触发：Experiment B（范围变更实验）。课程要求模拟一次临上线前的范围变更，用 `bmad-correct-course` 评估「预约成功后自动发邮件提醒」的冲击，产出 `_bmad-output/implementation-artifacts/experiment-B-impact.md`（477 行），并给出 A/B/C 三个处置方案。
+- Agent 建议：推荐方案 B（排到 v2）；若「客户要求上线前必须有动作」，先交付 `.ics` 日历文件做桥接；只有「上线可后移 ≥2 周 + 校园 SMTP 中继确认可用 + 产品负责人接受改 NFR-2」三条同时成立，才建议走 A。
+- 判断依据：影响分析自己指出了三处硬冲突。(1) `user` 表没有邮箱列，发信要先做 schema 迁移并补录 40 名存量学生，等于回头改已验收的 Story 1.1；(2) 客户说的「三种触发 + 一次提醒」实为四个通知事件（创建 / 取消 / 改单 / 开始前 2 小时），全部落在已交付的 `write_tx()` 写路径上，直接在事务里发信会把外部 IO 塞进事务边界；(3) PRD §6/§7.2「不做通知」与 NFR-2「不依赖外部服务」是已接受的承诺，不是可以顺手推翻的实现细节。`.ics` 桥接同样不行——它是新增导出能力，会与 Story 3.4 刚验收的 CSV 导出并成第二份导出契约，违反本项目「一个能力一个契约」的既有约定。
+- 最终：采用 B，只登记不执行。A 与 C 的 `.ics` 部分否决；`deferred-work.md` 新增 `## Deferred to v2: 邮件提醒`，写明重启条件三条；`experiment-B-impact.md` §12 写入同一份裁决记录。不新增 FR-9/FR-10，不改 PRD / architecture / epics 正文，不改代码，不动 `sprint-status.yaml`。
+- 验证计划：`git status` 中不出现 `PRD.md`、`architecture.md`、`epics.md` 的改动，也不出现 `src/`、`tests/` 的改动；`architecture.md` §16 未触碰；12 个 Story 状态不变；`pytest -q` 仍为 209 passed。
+- 证据：`evidence/D-014_2026-11-11-chat-correct-course-request.png`（变更请求原文）、`evidence/D-014_2026-11-11-chat-correct-course-options.png`（A/B/C 三方案对比表）、`evidence/D-014_2026-11-11-chat-reject-email.png`（裁决 A 与 `.ics` 否决、采用 B 的回复）。

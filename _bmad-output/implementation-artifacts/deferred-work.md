@@ -131,3 +131,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-export-audit.md`
   summary: 把重复的 `connect/seed_user/seed_equipment/login_as` 测试脚手架提到 `tests/conftest.py`。
   evidence: 本 Story 的测试文件是第 7 份复制；仓库级夹具重构会触碰既有测试，不在本 Story 改动面内。
+
+## Deferred to v2: 邮件提醒 (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/experiment-B-impact.md`
+  summary: 预约邮件提醒：预约成功、取消预约、管理员改单三类事件通知，外加开始前 2 小时提醒。
+  evidence: 2026-11-11 裁决采用方案 B（排到 v2），只记录不执行。方案 A 否决：需 `user.email` 迁移 + 40 人存量补录 + SMTP 出站 + 后台定时任务，违反 NFR-2 与 `architecture.md` §16；四个事件落在 `write_tx()` 写路径，破坏面 8 个生产文件、3/5 个写用例。方案 C 的 `.ics` 桥接否决：新增导出能力超出范围，且与 Story 3.4 的 CSV 并成第二份导出契约。重启条件：客户书面确认、校园 SMTP 中继可用、产品负责人同意改 NFR-2。

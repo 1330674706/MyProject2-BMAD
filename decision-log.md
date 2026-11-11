@@ -117,3 +117,23 @@
 - 最终：采用 B，只登记不执行。A 与 C 的 `.ics` 部分否决；`deferred-work.md` 新增 `## Deferred to v2: 邮件提醒`，写明重启条件三条；`experiment-B-impact.md` §12 写入同一份裁决记录。不新增 FR-9/FR-10，不改 PRD / architecture / epics 正文，不改代码，不动 `sprint-status.yaml`。
 - 验证计划：`git status` 中不出现 `PRD.md`、`architecture.md`、`epics.md` 的改动，也不出现 `src/`、`tests/` 的改动；`architecture.md` §16 未触碰；12 个 Story 状态不变；`pytest -q` 仍为 209 passed。
 - 证据：`evidence/D-014_2026-11-11-chat-correct-course-request.png`（变更请求原文）、`evidence/D-014_2026-11-11-chat-correct-course-options.png`（A/B/C 三方案对比表）、`evidence/D-014_2026-11-11-chat-reject-email.png`（裁决 A 与 `.ics` 否决、采用 B 的回复）。
+
+## D-015 2026-11-11 实验 A 改用等价小任务，不重跑真实 Story
+
+- 类型：否决
+- 触发：实验 A（规划深度对照实验）设计阶段。讲义第 34 页要求 X 走完整路径、Y 只口述需求，并强调「X 与 Y 必须难度相当，并在报告里给出判断理由」。
+- Agent 建议：X 用已交付的真实 Story（如 2.3 我的预约与取消）重跑一遍完整路径，Y 在干净副本里用一句话重做同一 Story，这样两组做的是同一件事，可比性最强。
+- 判断依据：重跑真实 Story 不可控。(1) 要在工作区里复制整个仓库并删掉 `_bmad-output/`、`project-context.md`、`AGENTS.md` 才能构成"无上游产物"的 Y 条件，删漏一样就污染对照组；(2) Y 的实现会覆盖已验收的 `booking_service.py`、`web/bookings.py`，与封版前的仓库状态冲突；(3) Story 2.3 有 10 个测试、跨 3 个模块，单次重跑的时间成本远超课程剩余时间，且失败会损坏交付物。等价小任务（新增一个纯函数模块 + 一个测试文件、零既有行为变更）在"交付面、函数签名、6 条 AC 逐字相同"的前提下，可比性来自构造而非来自巧合。
+- 最终：采用等价小任务 `format_slot_range`。X 读 `project-context.md` + 故事卡，Y 只有一句需求；同一人、同一天、同一模型、同一评审提示词；X 的产物先归档到 `_expA/X/` 再让 Y 从空目录开始。等价性论证与全部指标写入 `_bmad-output/implementation-artifacts/experiment-A-record.md` 第 2、3 节。
+- 验证计划：两组交付面必须完全一致（都只新增 `src/core/slotfmt.py` + `tests/test_slotfmt.py`）；归档后 `git status` 干净；`pytest -q` 回到 209 passed（实验代码不入生产）。
+- 证据：两组产物的文件清单见 `experiment-A-record.md` 第 10 节；评审回复原文见对话记录。本决策无截图，依据为实验记录文本。
+
+## D-016 2026-11-11 实验 A 结论：规划买的是「错误可裁决」，故事卡必须与模块边界对齐
+
+- 类型：决定（实质修改了智能体的建议）
+- 触发：实验 A 结果出来之后。X 组（有 PRD/架构/R1–R8/故事卡）与 Y 组（一句话需求）的评审发现条数完全相同（5 条 / 5 条），但性质不同：Y 的 5 条里有 2 条是把"非法输入必须拒绝"做成了"空串 / 静默合并"的语义反转，另有 3 处测试缺 `pytest.raises`；X 的 5 条里 1 条是 `core/` 复刻 slot 校验、1 条是时间格式重复，无一处语义反转。
+- Agent 建议：观察结论倾向于「两组打平，规划的性价比不高」，建议后续简化故事卡，只保留 AC 列表。
+- 判断依据：打平的是**数量**，不是**后果**。Y 的两条语义反转若按 12 个故事等比出现，等价于 12 处"该 409 的地方静默放行"，而 NFR-1 的验收口径是"并发 100 轮双预约 0 成功"——一条静默容错即可归零。反过来，X 之所以也违反 R1，是因为**故事卡自己**强制 `src/core/slotfmt.py` 并把"连续 + 30 分钟对齐"的校验写进 AC5，与 R1「slot 语义属于 `src/app/`」正面冲突；有上下文的一方会忠实执行错误规格。即"错误的规格比没有规格更危险"。简化故事卡只会放大这一类风险。
+- 最终：不简化故事卡，而是给卡片加一条硬要求——**交付落点必须与 `architecture.md` §13 的模块边界一致，AC 不得要求下游模块做上游模块的职责**。本次 `experiment-A-story-card.md` 保留原样不修，作为该结论的证据。同时决定 `format_slot_range` 不并入生产（两组都没接调用方，接进去等于给 R1 类问题开口子），只在 `deferred-work.md` 记一条"时间格式三处重复（`admin_service._slot_label` / `booking_service._slot_display` / `SlotCell.local_time`），可在 v2 收敛到 `timeutil`"。
+- 验证计划：`pytest -q` 回到 209 passed（实验代码全部归档到 `_expA/`，不进生产）；`git status` 干净；12 个 Story 状态不变；后续若再有 Story，其卡片的 Code Map 必须逐行对上 `architecture.md` §13。
+- 证据：`_bmad-output/implementation-artifacts/experiment-A-record.md`（第 5、6、7 节为缺陷对照与归因，第 8 节为"乘 12 个故事"的回答）；两组评审回复原文见对话记录。本决策无截图。

@@ -73,6 +73,34 @@ baseline_commit: 'd70757a'
 - Given 一次锁定与一次解锁，when 查 `audit_log`，then 两条 `lock`/`unlock`、`target_type='equipment'`、`after_json.slots` 均含该 slot。
 - Given 10:00 已锁定，when 再次锁定，then 409；given 无锁，when 解锁，then 404。
 
+### Review Findings
+
+- [x] [Review][Patch] 解锁 404 文案直接暴露 20 字符 UTC 串，其余管理端文案均为本地 `MM-DD HH:MM`，且测试已把 UTC 形态钉死 [src/app/booking_service.py:270]
+- [x] [Review][Patch] 「不能锁定已开始的 slot」分支无断言：唯一过去时段用例 `07:00` 先被开放窗口拦下，把 `<=` 改成 `<` 仍全绿 [src/app/slot_rules.py:122]
+- [x] [Review][Patch] `week_monday_for_slots()` 取 `slots[0]` 而非最早 slot，跨周批次回跳周取决于表单顺序 [src/app/admin_service.py:324]
+- [x] [Review][Patch] `_render_lock` 的错误分支无测试：非法 `?date=` 的 400 同页兜底、设备不存在/停用的 404 都未被执行（实测非法日期为 400 + 今日网格，非 200）[src/web/admin.py:110]
+- [x] [Review][Patch] 锁定页未复用 `.slot-filter`，`.lock-toolbar/.lock-picker/.lock-back/.lock-form` 在 `app.css` 中无任何规则，375px 下日期控件不进入整宽网格 [src/templates/admin_lock.html:7]
+- [x] [Review][Patch] 周视图入口的 `date=view.monday` 只被子串断言，删掉参数测试仍绿，管理员会落到“今天”而非所看周 [src/templates/admin_week.html:47]
+- [x] [Review][Patch] 解锁路由未做端到端验证：303 目标周与按钮 `formaction` 均无断言；删掉 `formaction` 后“解锁所选”会打到 `/lock` 得 409，17 条测试全绿 [src/web/admin.py:178]
+- [x] [Review][Patch] 远未来 slot（如 `9999-12-31T20:00:00Z`）在 `utc_to_local()` 抛 `OverflowError` → 500；窗口检查排在本地时间换算之后 [src/app/slot_rules.py:120]
+- [x] [Review][Patch] 多 slot 解锁成功路径无测试：只有单 slot 成功、多 slot 锁定、多 slot 404 原子性 [tests/test_admin_lock.py:307]
+- [x] [Review][Patch] `deferred-work.md` 缺 3.3 的 R5 条目：先红后绿不可复核的缺口未像 2.4/3.2 那样登记（3.3 小节已在本轮建好）[_bmad-output/implementation-artifacts/deferred-work.md:109]
+- [x] [Review][Defer] 架构契约未同步 3.3 新增面：`architecture.md:60` 与 `project-context.md` 仍写“四个用例 / 仅 `insert_occupancy()` 与 `delete_occupancy()`”，§15.1 缺 `GET /admin/equipments/<id>/lock` 行 [_bmad-output/planning-artifacts/architecture.md:60] — deferred: 改规划工件须人工确认并按 R7 同步 PRD §11
+
+**Rejected**
+
+- `low` spec 自述“5 条 AC”但列了 6 条，且“13 passed / 全量 180”与 17 条、184 条不符 —— 事实成立，但修法是改评审中的 spec 本身，按规则驳回。
+- `low` `## Spec Change Log` 为空，10 条 patch 的去向只留在正文散文里 —— 同上，修法是改本 spec。
+- `low` Verification 只列命令不记结果 —— 同上，修法是改本 spec。
+- `low` `validate_unlock_slots()` docstring 说可清理历史锁，Design Notes 又说“历史锁不提供清理入口” —— 需先由人决定是否允许清理历史锁，函数偏宽松无用户可见损害。
+- `low` `_slot_grid.html` 的 aria-label 新增 `cell.label`，改变了学生页与改单页的无障碍名 —— 新名称更完整，修法要加条件分支，无实际损害。
+- `false` 改单到已锁 slot 无测试 —— `tests/test_admin_edit_booking.py:471` 的 `test_locked_target_returns_409_and_marks_locked_cell` 已覆盖 409、`data-state="locked"`、零写库；并发 demo 属 2.2。
+- `false` POST 到不存在/停用设备返回 404 与 Code Map 不符 —— Code Map 明列 404，且 `build_lock_view()` 抛的正是 `NotFound("设备不存在")`（实测 404）。
+- `false` `/admin/week` 把每条锁都算进“异常 slot” —— Story 3.1 的 AC 与 I/O 矩阵 `LOCK_ANOMALY` 明确要求锁定格进异常摘要。
+- `low` 锁定页 409 重渲染无 `conflict_scope == "page"` 整页提示 —— 只有冲突行不在当日（伪造或跨日竞态）才出现，页面已有 `role="alert"` 文案列出冲突 slot；修法要加模板分支。
+- `low` 请求内重复 slot 被静默去重，而预约路径判 400“必须连续” —— 去重有 docstring 明示目的，改判需产品意图，无用户可见损害。
+
+
 ## Implementation Notes
 
 - 2026-11-11：先写 `tests/test_admin_lock.py`（13 条），首跑 12 failed / 1 passed（学生视图 `locked` 与提交 409 已由 1.3/2.1 覆盖）；实现后 13 passed，全量 180 passed（基线 167）。

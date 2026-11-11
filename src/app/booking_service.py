@@ -267,7 +267,8 @@ def unlock_slots(conn, actor_id, equipment_id, slots, now=None):
             raise Validation("设备不存在")
         validated = slot_rules.validate_unlock_slots(slots)
         if occupancy_repo.delete_lock_rows(conn, equipment_id, validated) != len(validated):
-            raise NotFound(f"锁定不存在或已解锁：{'、'.join(validated)}")
+            labels = "、".join(_slot_display(slot) for slot in validated)
+            raise NotFound(f"锁定不存在或已解锁：{labels}")
         audit_repo.insert_audit(
             conn,
             actor_id=actor_id,

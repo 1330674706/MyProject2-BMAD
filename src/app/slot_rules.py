@@ -117,12 +117,12 @@ def validate_lock_slots(equipment, slots, now):
     window_end = now_moment + timedelta(days=WINDOW_DAYS)
     for raw in normalized:
         moment = _parse_slot(raw)
+        if moment > window_end:
+            raise Validation("所选 slot 超出可锁窗口")
         if not (open_start <= utc_to_local(raw).time() < open_end):
             raise Validation("slot 不在设备开放时间内")
         if moment <= now_moment:
             raise Validation("不能锁定已开始的 slot")
-        if moment > window_end:
-            raise Validation("所选 slot 超出可锁窗口")
     return normalized
 
 

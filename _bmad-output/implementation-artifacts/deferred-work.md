@@ -96,6 +96,8 @@
   summary: R5 先红后绿证据同样不可复核，需与 2.4 一并补齐。
   evidence: `git show --stat 50dae79` 显示 `tests/test_admin_edit_booking.py | 571 +++` 与实现同处一个 commit，spec 的"13 failed"只有自述。
 
+## Deferred from: code review of spec-3-3-lock-slots.md (2026-11-11)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
   summary: 为锁定/解锁校验补 `tests/test_slot_rules.py` 单测（空列表、未对齐、重复值、7 天边界）。
   evidence: `validate_lock_slots()` / `validate_unlock_slots()` 目前只经 HTTP 覆盖；PRD §11 把 FR-7 映射到该测试文件，补齐可防形状规则回归。
@@ -103,3 +105,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
   summary: 为同一请求内的重复 slot 去重补一条回归测试。
   evidence: `_unique_aligned_slots()` 的去重是解锁 `rowcount == len(validated)` 的前提；删掉去重分支时现有 17 条测试全绿，但渲染表单每格只有一个值，正常流程不可达。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
+  summary: 架构契约未同步 3.3 的新增面——`architecture.md` 与 `project-context.md` 仍写"写 occupancy 的四个用例、仅 `insert_occupancy()`/`delete_occupancy()`"，§15.1 路由表也缺 `GET /admin/equipments/<id>/lock`。
+  evidence: 代码新增第五个用例 `unlock_slots()` 与第三个仓储写函数 `delete_lock_rows()`，照现文本读都算越界；改规划工件须人工确认并按 R7 在同一改动同步 `PRD.md` §11，故本轮不改。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-lock-slots.md`
+  summary: R5 先红后绿证据不可复核，需与 2.4/3.2 一并补齐。
+  evidence: `git show --stat f4a31a3` 显示 `tests/test_admin_lock.py | 498 +++` 与实现同处一个 commit；spec 既写"首跑 12 failed / 1 passed"，又写红灯证据无法跨工作树共享，仓库内无归档。本轮评审补的 3 条行为修正是先红后绿的（OverflowError、404 文案、回跳周），但 Story 主体实现的红灯仍只有自述。

@@ -355,7 +355,7 @@ def test_unlock_missing_lock_returns_404(app, db_path, clock):
     assert resp.status_code == 404
     assert occ_at(db_path, "10:00") == []
     assert audit_rows(db_path) == []
-    assert utc_at(DAY, "10:00") in resp.get_data(as_text=True)
+    assert "锁定不存在或已解锁：11-11 10:00" in resp.get_data(as_text=True)
 
 
 def test_lock_conflict_rerender_disables_resubmitting_the_cell(app, db_path, clock):
@@ -465,7 +465,7 @@ def test_lock_page_offers_free_and_locked_cells_and_week_link(app, db_path, cloc
 
     week = client.get(f"/admin/week?week={WEEK}")
     assert week.status_code == 200
-    assert f"/admin/equipments/E1/lock" in week.get_data(as_text=True)
+    assert f"/admin/equipments/E1/lock?date={WEEK}" in week.get_data(as_text=True)
 
 
 def test_lock_multiple_slots_writes_all_and_audits_list(app, db_path, clock):
@@ -496,3 +496,122 @@ def test_unlock_partial_missing_is_atomic(app, db_path, clock):
     assert resp.status_code == 404
     assert len(lock_rows(db_path)) == 1
     assert audit_rows(db_path) == []
+
+
+def test_lock_rejects_started_slot_inside_open_window(app, db_path, clock):
+    seed_equipment(db_path)
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+
+    resp = post_lock(client, slots=[utc_at(DAY, "08:00")], token=token)
+
+    assert resp.status_code == 400
+    assert "不能锁定已开始" in resp.get_data(as_text=True)
+    assert lock_rows(db_path) == []
+    assert audit_rows(db_path) == []
+
+
+def test_lock_rejects_far_future_slot_as_validation(app, db_path, clock):
+    seed_equipment(db_path)
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+
+    resp = post_lock(client, slots=["9999-12-31T20:00:00Z"], token=token)
+
+    assert resp.status_code == 400
+    assert lock_rows(db_path) == []
+    assert audit_rows(db_path) == []
+
+
+def test_unlock_redirects_to_the_week_of_written_slots(app, db_path, clock):
+    seed_equipment(db_path)
+    seed_lock(db_path, "10:00", day="2026-11-16")
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+
+    resp = post_unlock(
+        client,
+        slots=[utc_at("2026-11-16", "10:00")],
+        token=token,
+        day=DAY,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["Location"] == "/admin/week?week=2026-11-16"
+    assert lock_rows(db_path) == []
+
+
+def test_lock_page_unlock_button_targets_unlock_route(app, db_path, clock):
+    seed_equipment(db_path)
+    client = admin_client(app, db_path)
+
+    body = client.get(lock_url()).get_data(as_text=True)
+
+    assert 'formaction="/admin/equipments/E1/unlock"' in body
+
+
+def test_unlock_multiple_slots_removes_all_and_audits_once(app, db_path, clock):
+    seed_equipment(db_path)
+    seed_lock(db_path, "10:00")
+    seed_lock(db_path, "10:30")
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+    slots = [utc_at(DAY, "10:00"), utc_at(DAY, "10:30")]
+
+    resp = post_unlock(client, slots=slots, token=token)
+
+    assert resp.status_code == 303
+    assert lock_rows(db_path) == []
+    rows = audit_rows(db_path)
+    assert len(rows) == 1
+    assert rows[0]["action"] == "unlock"
+    assert json.loads(rows[0]["after_json"])["slots"] == slots
+
+
+def test_lock_page_with_bad_date_rerenders_today(app, db_path, clock):
+    seed_equipment(db_path)
+    client = admin_client(app, db_path)
+
+    resp = client.get("/admin/equipments/E1/lock?date=not-a-date")
+    body = resp.get_data(as_text=True)
+
+    assert resp.status_code == 400
+    assert f'name="date" value="{DAY}"' in body
+    assert "slot-grid" in body
+    assert lock_rows(db_path) == []
+
+
+def test_lock_page_for_unknown_equipment_returns_404(app, db_path, clock):
+    seed_equipment(db_path)
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+
+    assert client.get("/admin/equipments/NOPE/lock").status_code == 404
+
+    resp = client.post(
+        "/admin/equipments/NOPE/lock",
+        data={"csrf_token": token, "date": DAY, "slot": [utc_at(DAY, "10:00")]},
+    )
+
+    assert resp.status_code == 404
+    assert lock_rows(db_path) == []
+    assert audit_rows(db_path) == []
+
+
+def test_unlock_multi_week_batch_redirects_to_earliest_week(app, db_path, clock):
+    seed_equipment(db_path)
+    seed_lock(db_path, "10:00", day="2026-11-16")
+    seed_lock(db_path, "10:00", day="2026-11-09")
+    client = admin_client(app, db_path)
+    token = csrf_from_lock_page(client)
+
+    resp = post_unlock(
+        client,
+        slots=[utc_at("2026-11-16", "10:00"), utc_at("2026-11-09", "10:00")],
+        token=token,
+        day=DAY,
+    )
+
+    assert resp.status_code == 303
+    assert resp.headers["Location"] == "/admin/week?week=2026-11-09"
+    assert lock_rows(db_path) == []

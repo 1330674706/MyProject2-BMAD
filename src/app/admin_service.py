@@ -321,7 +321,8 @@ def week_monday_for_slots(slots) -> str:
     if not slots:
         raise Validation("请至少选择 1 个 slot")
     try:
-        return week_bounds_utc(utc_to_local(slots[0]).date().isoformat())[0]
+        earliest = min(slots)
+        return week_bounds_utc(utc_to_local(earliest).date().isoformat())[0]
     except ValueError:
         raise Validation("slot 时刻不存在") from None
 

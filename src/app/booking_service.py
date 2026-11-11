@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
+from src.app import slot_rules
 from src.app.slot_rules import (
     CANCEL_LEAD_HOURS,
     CANCEL_STATUS_CANCELLABLE,
@@ -12,12 +13,11 @@ from src.app.slot_rules import (
     CANCEL_STATUS_STARTED,
     cancel_status,
     validate_cancellable,
-    validate_slots,
 )
 from src.core import redact
 from src.core.errors import Conflict, Forbidden, NotFound, Validation
 from src.core.ids import new_id
-from src.core.timeutil import now_utc, utc_to_local
+from src.core.timeutil import now_utc, strictly_later_utc, utc_to_local
 from src.data import audit_repo, booking_repo, equipment_repo, occupancy_repo
 from src.data.tx import write_tx
 
@@ -59,6 +59,21 @@ def _conflict_text(rows) -> str:
     return f"以下 slot 已被占用：{details}"
 
 
+def _raise_conflict(conn, equipment_id, slots, *, exclude_booking_id=None):
+    if exclude_booking_id is None:
+        conflicts = occupancy_repo.select_taken(conn, equipment_id, slots)
+    else:
+        conflicts = occupancy_repo.select_taken(
+            conn, equipment_id, slots, exclude_booking_id=exclude_booking_id
+        )
+    if not conflicts:
+        raise Conflict("所选 slot 已被占用，请刷新后重试") from None
+    raise Conflict(
+        _conflict_text(conflicts),
+        [row["slot_start"] for row in conflicts],
+    ) from None
+
+
 def create_booking(conn, user_id, equipment_id, slots, now=None):
     booking_id = new_id()
     validated = []
@@ -68,7 +83,7 @@ def create_booking(conn, user_id, equipment_id, slots, now=None):
             equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
             if equipment is None or not equipment["active"]:
                 raise Validation("设备不存在")
-            validated = validate_slots(equipment, slots, now_text)
+            validated = slot_rules.validate(equipment, slots, now_text, mode="create")
             booking_repo.insert_booking(
                 conn,
                 booking_id=booking_id,
@@ -110,13 +125,93 @@ def create_booking(conn, user_id, equipment_id, slots, now=None):
                 created_at=now_text,
             )
     except _SlotTaken:
-        conflicts = occupancy_repo.select_taken(conn, equipment_id, validated)
-        if not conflicts:
-            raise Conflict("所选 slot 已被占用，请刷新后重试") from None
-        raise Conflict(
-            _conflict_text(conflicts),
-            [row["slot_start"] for row in conflicts],
-        ) from None
+        _raise_conflict(conn, equipment_id, validated)
+    return booking_id
+
+
+def edit_booking(conn, actor_id, booking_id, equipment_id, slots, now=None):
+    """管理员改单：同一 write_tx 内先删旧占用、再插新占用，保留 booking_id。"""
+    validated = []
+    try:
+        with write_tx(conn):
+            now_text = now or now_utc()
+            booking = booking_repo.get_by_id(conn, booking_id)
+            if booking is None:
+                raise NotFound("预约不存在或已取消")
+            old_rows = occupancy_repo.list_for_booking(conn, booking_id)
+            old_slots = [row["slot_start"] for row in old_rows]
+            if not old_slots:
+                raise NotFound("预约不存在或已取消")
+
+            equipment = equipment_repo.get_by_id(conn, equipment_id) if equipment_id else None
+            if equipment is None or not equipment["active"]:
+                raise Validation("设备不存在")
+            validated = slot_rules.validate(
+                equipment,
+                slots,
+                now_text,
+                mode="edit",
+                current_first_slot=old_slots[0],
+            )
+            updated_at = strictly_later_utc(booking["updated_at"], now_text)
+
+            if occupancy_repo.delete_occupancy(conn, booking_id) != len(old_slots):
+                raise NotFound("预约不存在或已取消")
+            try:
+                occupancy_repo.insert_occupancy(
+                    conn,
+                    equipment_id,
+                    validated,
+                    booking_id,
+                    "booking",
+                    created_at=now_text,
+                )
+            except sqlite3.IntegrityError as error:
+                if _is_slot_clash(error):
+                    raise _SlotTaken() from error
+                raise Validation("预约写入违反数据库约束") from None
+            if (
+                booking_repo.update_booking(
+                    conn,
+                    booking_id=booking_id,
+                    equipment_id=equipment_id,
+                    updated_at=updated_at,
+                )
+                != 1
+            ):
+                raise NotFound("预约不存在或已取消")
+            audit_repo.insert_audit(
+                conn,
+                actor_id=actor_id,
+                action="booking_edit",
+                target_type="booking",
+                target_id=booking_id,
+                before_json=redact.dump_fields(
+                    "booking",
+                    {
+                        "id": booking_id,
+                        "owner_id": booking["owner_id"],
+                        "equipment_id": booking["equipment_id"],
+                        "slots": old_slots,
+                        "created_at": booking["created_at"],
+                        "updated_at": booking["updated_at"],
+                    },
+                ),
+                after_json=redact.dump_fields(
+                    "booking",
+                    {
+                        "id": booking_id,
+                        "owner_id": booking["owner_id"],
+                        "equipment_id": equipment_id,
+                        "slots": validated,
+                        "created_at": booking["created_at"],
+                        "updated_at": updated_at,
+                    },
+                ),
+                created_at=now_text,
+            )
+    except _SlotTaken:
+        _raise_conflict(conn, equipment_id, validated, exclude_booking_id=booking_id)
     return booking_id
 
 

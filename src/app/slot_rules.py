@@ -17,6 +17,7 @@ CANCEL_STATUS_STARTED = "started"
 CANCEL_STATUS_PAST_DEADLINE = "past_deadline"
 
 UTC_SLOT_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z$")
+VALID_MODES = ("create", "edit")
 
 
 def _parse_slot(raw):
@@ -35,8 +36,14 @@ def _open_window(equipment):
         raise Validation("设备开放时间配置不正确") from None
 
 
-def validate_slots(equipment, slots, now):
-    """校验 1–8 个连续、对齐、在开放窗口与 7 天窗口内的未来 slot。"""
+def validate(equipment, slots, now, *, mode="create", current_first_slot=None):
+    """校验 1–8 个连续、对齐、在开放窗口与 7 天窗口内的未来 slot。
+
+    create/edit 共用同一套形状规则；只有 edit 额外执行首个 slot 前 2 小时截止。
+    `current_first_slot` 供改单同时约束原预约的首个 slot。
+    """
+    if mode not in VALID_MODES:
+        raise ValueError(f"未知校验模式: {mode}")
     if not slots:
         raise Validation("请至少选择 1 个 slot")
     if len(slots) > MAX_SLOTS:
@@ -62,6 +69,13 @@ def validate_slots(equipment, slots, now):
             raise Validation("所选 slot 已开始")
         if moment > window_end:
             raise Validation("所选 slot 超出可约窗口")
+    if mode == "edit":
+        edit_starts = [moments[0]]
+        if current_first_slot is not None:
+            edit_starts.append(_parse_slot(current_first_slot))
+        deadline = timedelta(hours=CANCEL_LEAD_HOURS)
+        if any(start - now_moment < deadline for start in edit_starts):
+            raise Validation(f"改单需在首个 slot 开始前至少 {CANCEL_LEAD_HOURS} 小时")
     return list(slots)
 
 

@@ -1,0 +1,94 @@
+---
+title: 'Story 2.4 连续多 slot 选择与改单边界'
+type: 'feature'
+created: '2026-11-11'
+status: 'in-review'
+route: 'dispatch'
+review_loop_iteration: 0
+context: []
+baseline_commit: 'ca904276d84e3efe313650d6b4d777f761c9fdba'
+---
+
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+
+## Intent
+
+**Problem:** 创建预约已有形状校验，但改单仍会复制第二份规则；且“先插新行、再删旧行”会在目标与自身旧集合相交时撞上自己的唯一键，把成功改单误报成 409。
+
+**Approach:** 在 `src/app/slot_rules.py` 用 `validate(..., mode="create"|"edit")` 单点承载全部形状/窗口规则，仅 edit 额外执行 2 小时截止；在 `booking_service.edit_booking()` 的单个 `write_tx()` 内先删旧 occupancy、再插新 occupancy、更新同一 booking 并写审计。本 Story 只做规则内核与服务层，HTTP 路由与表单留给 3.2。
+
+## Boundaries & Constraints
+
+**Always:** 规则只在 `slot_rules.validate()` 实现一次；create 与 edit 共用同一套检查；edit 的 2 小时截止同时约束原预约首 slot 与目标首 slot；冲突只由 `uq_occupancy_slot` 裁决；改单固定顺序 SELECT booking → DELETE 旧行 → INSERT 新行 → UPDATE booking → 审计；失败整单回滚，原 occupancy 按 `(equipment_id, slot_start, kind, booking_id)` 逐行不变；booking_id 与 id 不变，updated_at 严格递增。
+
+**Never:** 第二条校验路径或复制连续性判断；先插后删；事务外 check-then-write；`INSERT OR IGNORE` / `OR REPLACE`；把外键等 IntegrityError 伪装成 409；改 migrations、唯一键或 CHECK；实现 3.2 路由/表单；新增运行期依赖。
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| 规则矩阵 | 合法连续 / 中断 / 9 个 / 非对齐 / 开放窗口外 / 首格超 7 天 / 跨设备 | create 与 edit 结果一致：合法通过，非法 `Validation` | 400（web 层，3.2） |
+| edit 截止 | 目标首格距 now 1h59 | create 通过；edit `Validation` | 400 |
+| 自身重叠 | 旧 14:00–15:00，改到 14:30–15:30 | 成功；该 booking_id 恰 3 行新 slot；id 不变 | N/A |
+| 他人冲突 | 目标含他人 booking 或 lock | `Conflict`；原占用逐行不变 | 409 |
+| 形状失败 | 改单目标 9 个或有间隙 | `Validation`；原占用逐行不变 | 400 |
+| 原预约临期 | 原首格距 now 1h59 | `Validation`；原占用逐行不变 | 400 |
+| 成功改单 | 新旧集合有交集 | 无重复 key；该 booking_id 行数等于新集合大小 | N/A |
+| 单点调用 | 先创建再改单，spy `slot_rules.validate` | mode 序列恰为 `["create", "edit"]` | N/A |
+| 时间戳 | 改单前后 booking 行 | `id` 相同，`updated_at` 字典序严格更大 | N/A |
+
+</frozen-after-approval>
+
+## Code Map
+
+- `src/app/slot_rules.py` -- 将 `validate_slots()` 收敛为 `validate(..., *, mode, current_first_slot=None)`；create/edit 共用全部检查。
+- `src/app/booking_service.py` -- 创建路径改调 `slot_rules.validate(..., mode="create")`；新增 `edit_booking()`，单事务内先删后插。
+- `src/data/occupancy_repo.py` -- 追加 `delete_occupancy()`、`list_for_booking()`，并让 `select_taken()` 可排除被改预约自身。
+- `src/data/booking_repo.py` -- 追加 `update_booking()`，更新 equipment_id 与 updated_at，不改 id。
+- `src/core/timeutil.py` -- 追加 `strictly_later_utc()`，保证同一秒内改单 updated_at 仍严格递增。
+- `tests/test_slot_rules.py` -- 新增本 Story 全部测试；服务层直接构造预约，不接 HTTP。
+- 不改：`migrations/`、`src/web/`、`src/templates/`、planning artifacts。
+
+## Tasks & Acceptance
+
+**Execution:**
+- [x] `tests/test_slot_rules.py` -- 先写矩阵、自身重叠、冲突回滚、形状失败、临期、单点 spy、时间戳测试并跑出红灯 -- R5
+- [x] `src/app/slot_rules.py` -- 单点实现 create/edit 与 edit 截止 -- R1
+- [x] `src/data/occupancy_repo.py`、`src/data/booking_repo.py` -- 增加删除/查询/更新仓储函数，不控制事务 -- R2
+- [x] `src/core/timeutil.py` -- 增加严格递增 UTC 工具 -- R4
+- [x] `src/app/booking_service.py` -- 新增同日单事务改单用例与 409 映射 -- R2/R3
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- 2.4 置 `review` -- R6
+
+**Acceptance Criteria:**
+- Given 规则矩阵七类用例，when 分别以 create/edit 调用 `slot_rules.validate`，then 结果与 EXPECTED_MATRIX 一致，仅 2h 截止用例在 edit 下失败。
+- Given 旧预约占 3 个 slot 且目标与旧集合相交，when 改单，then 成功、booking_id 不变、恰 3 行新 slot。
+- Given 目标含他人预约或锁定，when 改单，then `Conflict` 且 occupancy 逐行不变（kind/booking_id 含在内）。
+- Given 目标 9 个或有间隙，when 改单，then `Validation` 且 occupancy 逐行不变。
+- Given 原预约首 slot 距 now 1h59，when 改单，then `Validation` 且 occupancy 逐行不变。
+- Given 成功改单，when 检查 key 分布，then 无重复 key 且该 booking_id 行数等于新集合大小。
+- Given 先创建再改单，when spy `slot_rules.validate`，then mode 序列为 `["create", "edit"]`。
+- Given 成功改单前后 booking 行，when 比较，then `id` 相同且 `updated_at` 严格递增。
+
+## Implementation Notes
+
+HTTP 303/400/409 的映射属于 Story 3.2；本 Story 以服务层“无异常 / Validation / Conflict”为等价契约。
+
+红灯：`tests/test_slot_rules.py` 9 failed，均为缺少 `slot_rules.validate`、`booking_service.edit_booking`、`occupancy_repo.delete_occupancy` 的行为失败；无夹具或环境错误。
+
+绿灯：`tests/test_slot_rules.py` 9 passed；全量 `130 passed`。
+
+实现决定：edit 的 2 小时截止同时检查原预约首 slot 与目标首 slot；改单在同一 `write_tx()` 内严格先 `DELETE` 后 `INSERT`；冲突回滚后重查时排除被改预约自身的旧行，避免把自身 slot 报进 409；`updated_at` 经 `strictly_later_utc()` 保证同一秒内仍严格递增。
+
+本仓库渲染的 workflow 未配置 review-prompts，故无独立评审层可跑；上述证据与源码 diff 由实现方自检。
+
+## Review Triage Log
+
+| Finding | Verdict | Route |
+| --- | --- | --- |
+| 无独立评审层（review-prompts 不存在） | — | 自检；无 finding 可登记 |
+
+## Verification
+
+**Commands:**
+- `python -m pytest tests/test_slot_rules.py -q` -- 先红（断言失败），实现后全绿。
+- `python -m pytest -q` -- 全量回归全绿。

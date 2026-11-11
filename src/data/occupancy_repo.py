@@ -6,6 +6,11 @@ INSERT_OCCUPANCY = (
     "INSERT INTO occupancy (equipment_id, slot_start, kind, booking_id, created_at)"
     " VALUES (?, ?, ?, ?, ?)"
 )
+DELETE_FOR_BOOKING = "DELETE FROM occupancy WHERE booking_id = ? AND kind = 'booking'"
+LIST_FOR_BOOKING = (
+    "SELECT equipment_id, slot_start, kind, booking_id FROM occupancy"
+    " WHERE booking_id = ? ORDER BY slot_start"
+)
 
 
 def list_for_range(conn, equipment_id, first_slot, last_slot):
@@ -34,14 +39,30 @@ def list_slots_for_booking(conn, booking_id):
     ).fetchall()
 
 
-def select_taken(conn, equipment_id, slots):
+def list_for_booking(conn, booking_id):
+    """返回该预约的完整占用行，供改单前快照与审计使用。"""
+    return conn.execute(LIST_FOR_BOOKING, (booking_id,)).fetchall()
+
+
+def delete_occupancy(conn, booking_id) -> int:
+    """删除该预约的 booking 占用行；锁定行 booking_id 为 NULL，不受影响。"""
+    return conn.execute(DELETE_FOR_BOOKING, (booking_id,)).rowcount
+
+
+def select_taken(conn, equipment_id, slots, exclude_booking_id=None):
     """返回请求中已被占用的行；只用于生成 409 文案，不参与放行或拒绝。"""
     if not slots:
         return []
     placeholders = ", ".join("?" for _ in slots)
+    params = [equipment_id, *slots]
+    exclusion = ""
+    if exclude_booking_id is not None:
+        exclusion = " AND (booking_id IS NULL OR booking_id <> ?)"
+        params.append(exclude_booking_id)
     return conn.execute(
         "SELECT equipment_id, slot_start FROM occupancy"
         f" WHERE equipment_id = ? AND slot_start IN ({placeholders})"
+        f"{exclusion}"
         " ORDER BY slot_start",
-        (equipment_id, *slots),
+        params,
     ).fetchall()

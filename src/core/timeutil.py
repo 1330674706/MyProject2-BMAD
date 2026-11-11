@@ -26,6 +26,14 @@ def add_days(value: str, days: int) -> str:
     return (parse_utc(value) + timedelta(days=days)).strftime(UTC_FORMAT)
 
 
+def strictly_later_utc(previous: str, candidate: str) -> str:
+    """返回严格晚于 previous 的 UTC 文本；同一秒内至少前进 1 秒。"""
+    previous_moment = parse_utc(previous)
+    if parse_utc(candidate) > previous_moment:
+        return candidate
+    return (previous_moment + timedelta(seconds=1)).strftime(UTC_FORMAT)
+
+
 def local_at(day: str, wallclock: str) -> datetime:
     """把本地日期与 `HH:MM` 墙钟组合成带时区的本地时刻。"""
     return datetime.combine(

@@ -2,7 +2,7 @@
 title: 'Story 2.3 我的预约与取消'
 type: 'feature'
 created: '2026-11-10'
-status: 'done'
+status: in-review
 route: 'dispatch'
 review_loop_iteration: 0
 context: []

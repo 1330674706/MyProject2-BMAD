@@ -16,6 +16,7 @@ LIST_BY_OWNER = (
     " WHERE b.owner_id = ? ORDER BY b.created_at DESC, b.id"
 )
 DELETE_BY_ID = "DELETE FROM booking WHERE id = ?"
+UPDATE_BOOKING = "UPDATE booking SET equipment_id = ?, updated_at = ? WHERE id = ?"
 
 
 def insert_booking(conn, *, booking_id, owner_id, equipment_id, created_at, updated_at) -> None:
@@ -32,3 +33,7 @@ def list_by_owner(conn, owner_id):
 
 def delete_by_id(conn, booking_id) -> int:
     return conn.execute(DELETE_BY_ID, (booking_id,)).rowcount
+
+
+def update_booking(conn, *, booking_id, equipment_id, updated_at) -> int:
+    return conn.execute(UPDATE_BOOKING, (equipment_id, updated_at, booking_id)).rowcount

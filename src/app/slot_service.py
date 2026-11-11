@@ -46,6 +46,10 @@ class SlotCell:
     state: str
     conflicted: bool = False
     selected: bool = False
+    booking_id: str | None = None
+    owner_student_no: str | None = None
+    anomaly: bool = False
+    anomaly_label: str | None = None
 
     def __post_init__(self) -> None:
         if self.state not in SIX_STATES:

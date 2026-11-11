@@ -180,3 +180,102 @@ button:disabled { background: #6b7280; cursor: not-allowed; }
 }
 .slot-cell.is-conflict { outline: 2px solid #b3261e; }
 .slot-conflict { color: #b3261e; font-size: 0.75rem; }
+
+.page--wide { max-width: 80rem; }
+
+.week-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.week-picker { display: flex; align-items: end; gap: 0.5rem; }
+.week-picker input { min-width: 13rem; }
+
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.week-nav a,
+.week-search-link { color: var(--accent); }
+
+.week-anomalies {
+  padding: 0.6rem 0.75rem;
+  margin: 0.75rem 0 1rem;
+  border-left: 4px solid #b45309;
+  background: #fffbeb;
+}
+
+.week-anomalies h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+
+.week-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+
+.week-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.week-table th,
+.week-table td {
+  padding: 0.4rem;
+  vertical-align: top;
+  text-align: left;
+  border: 1px solid var(--line);
+}
+
+.week-table td { min-width: 0; }
+.week-date { color: #52606d; font-size: 0.78rem; font-weight: 400; }
+.week-grid { min-width: 0; }
+.week-grid .slot-grid { grid-template-columns: minmax(0, 1fr); }
+.week-grid .slot-cell { flex-wrap: wrap; padding: 0.4rem 0.45rem; }
+
+.slot-owner,
+.slot-anomaly { color: #7c2d12; font-size: 0.75rem; }
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 720px) {
+  .page--wide { max-width: 100%; }
+  .week-picker { display: grid; width: 100%; }
+  .week-picker input { width: 100%; min-width: 0; }
+  .week-table,
+  .week-table thead,
+  .week-table tbody,
+  .week-table tr,
+  .week-table th,
+  .week-table td { display: block; width: 100%; }
+  .week-table thead { display: none; }
+  .week-table tr {
+    margin-bottom: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .week-table th[scope="row"] { background: #eef2f7; }
+  .week-table td::before {
+    content: attr(data-day);
+    display: block;
+    margin-bottom: 0.3rem;
+    color: #52606d;
+    font-size: 0.8rem;
+  }
+  .week-grid .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

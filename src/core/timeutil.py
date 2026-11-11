@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -55,3 +56,27 @@ def local_to_utc(local_dt: datetime) -> str:
 def utc_to_local(value: str) -> datetime:
     """20 字符 UTC 文本转 Asia/Shanghai 本地时刻。"""
     return parse_utc(value).astimezone(LOCAL_TZ)
+
+
+def week_bounds_utc(value: str | None = None, *, now: str | None = None) -> tuple[str, str, str]:
+    """返回 `(周一本地日期, 周起始 UTC, 下周起始 UTC)`，右端开区间。
+
+    `value` 接受 `YYYY-MM-DD`（该周内任意一天）或 `YYYY-Www`；缺省取当前周。
+    """
+    text = (value or "").strip()
+    if not text:
+        anchor = utc_to_local(now or now_utc()).date()
+    elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        anchor = date.fromisoformat(text)
+    elif re.fullmatch(r"\d{4}-W\d{2}", text):
+        anchor = date.fromisocalendar(int(text[:4]), int(text[6:]), 1)
+    else:
+        raise ValueError("周参数必须是 YYYY-MM-DD 或 YYYY-Www")
+
+    monday = anchor - timedelta(days=anchor.weekday())
+    try:
+        start = local_to_utc(local_at(monday.isoformat(), "00:00"))
+        end = local_to_utc(local_at((monday + timedelta(days=7)).isoformat(), "00:00"))
+    except (ValueError, OverflowError):
+        raise ValueError("周参数超出支持范围") from None
+    return monday.isoformat(), start, end

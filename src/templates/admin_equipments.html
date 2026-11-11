@@ -3,6 +3,10 @@
 {% block heading %}设备维护{% endblock %}
 {% block content %}
 {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+<p class="hint admin-links">
+  <a href="{{ url_for('admin.week') }}">本周视图</a>
+  <a href="{{ url_for('admin.users') }}">按学号检索</a>
+</p>
 <form method="post" action="{{ url_for('admin.create_equipment') }}" class="stack">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <label>设备名称<input type="text" name="name" required></label>

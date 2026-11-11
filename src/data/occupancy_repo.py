@@ -11,6 +11,13 @@ LIST_FOR_BOOKING = (
     "SELECT equipment_id, slot_start, kind, booking_id FROM occupancy"
     " WHERE booking_id = ? ORDER BY slot_start"
 )
+LIST_WEEK_OCCUPANCY = (
+    "SELECT o.equipment_id, o.slot_start, o.kind, o.booking_id, b.owner_id"
+    " FROM occupancy AS o"
+    " LEFT JOIN booking AS b ON b.id = o.booking_id"
+    " WHERE o.slot_start >= ? AND o.slot_start < ?"
+    " ORDER BY o.slot_start, o.equipment_id"
+)
 
 
 def list_for_range(conn, equipment_id, first_slot, last_slot):
@@ -22,6 +29,11 @@ def list_for_range(conn, equipment_id, first_slot, last_slot):
         " ORDER BY o.slot_start",
         (equipment_id, first_slot, last_slot),
     ).fetchall()
+
+
+def list_week_occupancy(conn, start_utc, end_utc):
+    """按自然周半开区间读取占用行，供管理员周视图附加归属与异常。"""
+    return conn.execute(LIST_WEEK_OCCUPANCY, (start_utc, end_utc)).fetchall()
 
 
 def insert_occupancy(conn, equipment_id, slots, booking_id, kind, *, created_at) -> None:

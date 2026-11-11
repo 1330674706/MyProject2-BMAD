@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}周视图{% endblock %}
+{% block heading %}周视图{% endblock %}
+{% block page_class %} page--wide{% endblock %}
+{% block content %}
+{% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+<section class="week-toolbar">
+  <form class="week-picker" method="get" action="{{ url_for('admin.week') }}">
+    <label>周
+      <input type="text" name="week" value="{{ selected_week }}" placeholder="YYYY-MM-DD 或 YYYY-Www">
+    </label>
+    <button type="submit">查看</button>
+  </form>
+  <a class="week-search-link" href="{{ url_for('admin.users') }}">按学号检索</a>
+</section>
+{% if view %}
+<nav class="week-nav" aria-label="周切换">
+  <a href="{{ url_for('admin.week', week=view.previous_week) }}">上一周</a>
+  <span>{{ view.monday }} 至 {{ view.sunday }}</span>
+  <a href="{{ url_for('admin.week', week=view.next_week) }}">下一周</a>
+  <a href="{{ url_for('admin.week') }}">回到本周</a>
+</nav>
+<p class="hint">自然周按周一 00:00 至下周一 00:00（左闭右开），格子状态来自统一 slot 视图。</p>
+
+{% if view.anomaly_slots %}
+<section class="week-anomalies" data-anomaly-summary="1" role="status">
+  <h2>异常 slot（{{ view.anomaly_slots|length }}）</h2>
+  <ul class="slot-list">
+    {% for anomaly in view.anomaly_slots %}<li data-anomaly-slot="{{ anomaly.slot_start }}">{{ anomaly.label }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="week-table-scroll">
+  <table class="week-table">
+    <thead>
+      <tr>
+        <th scope="col">设备</th>
+        {% for day in view.days %}
+        <th scope="col">{{ day.weekday }}<br><span class="week-date">{{ day.date }}</span></th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for equipment in view.equipments %}
+      <tr>
+        <th scope="row">{{ equipment.equipment_name }}<br><span class="week-date">{{ equipment.equipment_id }}</span></th>
+        {% for day in equipment.days %}
+        <td data-day="{{ day.weekday }} {{ day.date }}">
+          <div class="week-grid" data-grid-equipment="{{ equipment.equipment_id }}" data-grid-day="{{ day.date }}">
+            {% with grid=day.grid %}{% include "_slot_grid.html" %}{% endwith %}
+          </div>
+        </td>
+        {% endfor %}
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="hint">暂无启用设备。</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>该周预约</h2>
+{% if view.bookings %}
+<div class="table-scroll">
+  <table class="data-table week-bookings">
+    <thead>
+      <tr><th>学号</th><th>设备</th><th>slot</th><th>booking_id</th><th>状态</th></tr>
+    </thead>
+    <tbody>
+      {% for booking in view.bookings %}
+      <tr data-booking-id="{{ booking.booking_id }}">
+        <td>{{ booking.student_no }}</td>
+        <td>{{ booking.equipment_name }}</td>
+        <td>{{ booking.slots|join("、") }}</td>
+        <td>{{ booking.booking_id }}</td>
+        <td>{{ booking.status_label }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="hint">该周暂无预约。</p>
+{% endif %}
+<ul class="slot-legend">
+  <li class="slot-key is-free">空闲</li>
+  <li class="slot-key is-booked_by_self">我的预约</li>
+  <li class="slot-key is-booked_by_other">已被占用</li>
+  <li class="slot-key is-locked">已锁定</li>
+  <li class="slot-key is-closed_past">已开始</li>
+  <li class="slot-key is-closed_window">超出可约窗口</li>
+</ul>
+{% endif %}
+{% endblock %}

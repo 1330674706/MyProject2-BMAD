@@ -17,6 +17,19 @@ LIST_BY_OWNER = (
 )
 DELETE_BY_ID = "DELETE FROM booking WHERE id = ?"
 UPDATE_BOOKING = "UPDATE booking SET equipment_id = ?, updated_at = ? WHERE id = ?"
+BOOKING_WEEK_COLUMNS = (
+    "SELECT b.id AS booking_id, b.owner_id, u.student_no, b.equipment_id,"
+    " e.name AS equipment_name, b.created_at, b.updated_at, o.slot_start"
+    " FROM booking AS b"
+    " JOIN user AS u ON u.id = b.owner_id"
+    " JOIN equipment AS e ON e.id = b.equipment_id"
+    " JOIN occupancy AS o ON o.booking_id = b.id AND o.kind = 'booking'"
+)
+LIST_IN_WEEK = (
+    BOOKING_WEEK_COLUMNS
+    + " WHERE o.slot_start >= ? AND o.slot_start < ?"
+    " ORDER BY b.created_at, b.id, o.slot_start"
+)
 
 
 def insert_booking(conn, *, booking_id, owner_id, equipment_id, created_at, updated_at) -> None:
@@ -37,3 +50,22 @@ def delete_by_id(conn, booking_id) -> int:
 
 def update_booking(conn, *, booking_id, equipment_id, updated_at) -> int:
     return conn.execute(UPDATE_BOOKING, (equipment_id, updated_at, booking_id)).rowcount
+
+
+def list_in_week(conn, start_utc, end_utc):
+    """返回自然周内每条预约占用行，带学生学号与设备名。"""
+    return conn.execute(LIST_IN_WEEK, (start_utc, end_utc)).fetchall()
+
+
+def list_for_owners(conn, owner_ids):
+    """返回指定学生全部预约占用行，供按学号检索使用。"""
+    ids = list(owner_ids)
+    if not ids:
+        return []
+    placeholders = ", ".join("?" for _ in ids)
+    return conn.execute(
+        BOOKING_WEEK_COLUMNS
+        + f" WHERE b.owner_id IN ({placeholders})"
+        " ORDER BY b.created_at DESC, b.id, o.slot_start",
+        ids,
+    ).fetchall()

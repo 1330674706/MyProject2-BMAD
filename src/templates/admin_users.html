@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}按学号检索{% endblock %}
+{% block heading %}按学号检索{% endblock %}
+{% block content %}
+<form class="slot-filter" method="get" action="{{ url_for('admin.users') }}">
+  <label>学号
+    <input type="text" name="student_no" value="{{ result.query }}" placeholder="精确学号或前缀" required>
+  </label>
+  <button type="submit">检索</button>
+</form>
+<p class="hint"><a href="{{ url_for('admin.week') }}">返回周视图</a>。精确学号优先；无精确匹配时按前缀查找。</p>
+
+{% if result.query %}
+  {% if result.students %}
+  <p class="hint">匹配学生：{{ result.students|join("、") }}</p>
+  {% endif %}
+  {% if result.truncated %}
+  <p class="hint" data-truncated="1">匹配学生超过 50 人，仅显示前 50 人；请输入更精确的学号。</p>
+  {% endif %}
+  {% if result.bookings %}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>学号</th><th>设备</th><th>slot</th><th>booking_id</th><th>状态</th></tr>
+      </thead>
+      <tbody>
+        {% for booking in result.bookings %}
+        <tr data-booking-id="{{ booking.booking_id }}">
+          <td>{{ booking.student_no }}</td>
+          <td>{{ booking.equipment_name }}</td>
+          <td>{{ booking.slots|join("、") }}</td>
+          <td>{{ booking.booking_id }}</td>
+          <td>{{ booking.status_label }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="hint" data-empty-result="1">没有找到该学号的预约。</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

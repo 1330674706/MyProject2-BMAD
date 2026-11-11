@@ -75,3 +75,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-slot-rules-edit.md`
   summary: 补齐 Story 2.4 先红后绿的运行证据，使 R5 可复核。
   evidence: 单个 commit `1aad2d6` 同时包含测试与实现，spec 中 `9 failed` 的红灯记录只有自述，无法从仓库历史复核。
+
+## Deferred from: code review of spec-3-2-admin-edit-booking.md (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
+  summary: 让 `epics.md` Story 3.2 的目标与 `PRD.md` FR-7 的能力描述和 D-011 一致（改单只改时段，不换设备）。
+  evidence: `epics.md:591` 仍写“改到另一台设备”，`PRD.md:183` 写“可修改预约的设备或 slot 集合”；两者与 `decision-log.md` D-011 相反。本次未改规划工件，按 R7 需人工确认后在同一改动同步 `PRD.md` §11。
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-admin-edit-booking.md`
+  summary: 在按学号检索结果表里也提供改单入口。
+  evidence: `admin_users.html` 的预约行与周视图同源（`StudentSearch.bookings`），但目前只有周视图有“改单”链接；是否扩大入口属人工范围决定，补测试时在 `/admin/users` 断言即可。

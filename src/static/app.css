@@ -179,6 +179,7 @@ button:disabled { background: #6b7280; cursor: not-allowed; }
   .inline-form input { width: 100%; }
 }
 .slot-cell.is-conflict { outline: 2px solid #b3261e; }
+.slot-cell[data-selected="1"] { outline: 2px dashed #2563eb; outline-offset: 1px; }
 .slot-conflict { color: #b3261e; font-size: 0.75rem; }
 
 .page--wide { max-width: 80rem; }

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}改单{% endblock %}
+{% block heading %}改单{% endblock %}
+{% block content %}
+{% if view %}
+{% if error and view.grid.conflict_scope == "page" %}
+<section class="conflict-page" data-conflict-page="1" role="alert">
+  <p class="alert">提交未完成：{{ error }}</p>
+  <p class="hint">下方网格已按最新占用状态刷新；与提交日期不一致的冲突已在上方列出，请核对后重新提交。</p>
+</section>
+{% elif error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+<section class="booking-edit-summary">
+  <p class="hint">预约 {{ view.booking_id }}，学号 {{ view.student_no }}，设备 {{ view.equipment_name }}（{{ view.equipment_id }}），原时段 {{ view.slots_display|join("、") }}。</p>
+  <p class="hint">改单只调整时段，设备不可更换；需要换设备请取消后重新预约。</p>
+  <p class="hint"><a href="{{ url_for('admin.week', week=view.week_monday) }}">返回该周视图</a></p>
+</section>
+<form class="slot-filter" method="get" action="{{ url_for('admin.edit_booking_form', id=view.booking_id) }}">
+  <label>日期
+    <input type="date" name="date" value="{{ view.grid.day }}" required>
+  </label>
+  <button type="submit">查看该日</button>
+</form>
+<p class="hint">开放时间 {{ view.grid.open_start }}–{{ view.grid.open_end }}，每格 30 分钟。</p>
+<form class="booking-form" method="post" action="{{ url_for('admin.edit_booking', id=view.booking_id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="equipment_id" value="{{ view.equipment_id }}">
+  <input type="hidden" name="date" value="{{ view.grid.day }}">
+  <div class="week-grid" data-grid-equipment="{{ view.equipment_id }}" data-grid-day="{{ view.grid.day }}">
+    {% with grid=view.grid, selectable_form=True, slot_action='改到该时段' %}{% include "_slot_grid.html" %}{% endwith %}
+  </div>
+  <button type="submit">保存改单</button>
+</form>
+<ul class="slot-legend">
+  <li class="slot-key is-free">空闲</li>
+  <li class="slot-key is-booked_by_self">我的预约</li>
+  <li class="slot-key is-booked_by_other">已被占用</li>
+  <li class="slot-key is-locked">已锁定</li>
+  <li class="slot-key is-closed_past">已开始</li>
+  <li class="slot-key is-closed_window">超出可约窗口</li>
+</ul>
+{% endif %}
+{% endblock %}

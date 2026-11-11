@@ -1,10 +1,10 @@
-"""管理员路由：账号运维、设备维护；本周视图由 Story 3.1 交付。"""
+"""管理员路由：周视图、学生检索、改单、账号运维与设备维护。"""
 
 from __future__ import annotations
 
 from flask import Blueprint, current_app, g, redirect, render_template, request, url_for
 
-from src.app import admin_service, auth_service, equipment_service
+from src.app import admin_service, auth_service, booking_service, equipment_service
 from src.core.errors import Conflict, Validation
 from src.data.db import get_db
 from src.web.auth import admin_required
@@ -31,6 +31,70 @@ def week():
             selected_week=(request.args.get("week") or "").strip(),
         )
     return render_template("admin_week.html", view=view, selected_week=view.monday)
+
+
+def _render_edit(
+    error=None,
+    *,
+    booking_id,
+    day,
+    selected_slots=None,
+    conflicted_slots=(),
+):
+    db = get_db()
+    try:
+        view = admin_service.build_booking_edit_view(
+            db,
+            booking_id=booking_id,
+            viewer_id=g.user["id"],
+            day=day,
+            selected_slots=selected_slots,
+            conflicted_slots=conflicted_slots,
+        )
+    except Validation as bad_day:
+        view = admin_service.build_booking_edit_view(
+            db,
+            booking_id=booking_id,
+            viewer_id=g.user["id"],
+        )
+        error = error or bad_day
+    if error is None:
+        return render_template("admin_booking_edit.html", view=view)
+    return render_error(error, "admin_booking_edit.html", view=view)
+
+
+@bp.get("/bookings/<id>/edit")
+@admin_required
+def edit_booking_form(id):
+    return _render_edit(booking_id=id, day=request.args.get("date"))
+
+
+@bp.post("/bookings/<id>/edit")
+@admin_required
+def edit_booking(id):
+    validate_csrf()
+    day = (request.form.get("date") or "").strip()
+    submitted_slots = request.form.getlist("slot")
+    week_monday = admin_service.booking_week_monday(get_db(), id)
+    try:
+        booking_service.edit_booking(
+            get_db(),
+            g.user["id"],
+            id,
+            (request.form.get("equipment_id") or "").strip(),
+            submitted_slots,
+        )
+    except Conflict as error:
+        return _render_edit(
+            error,
+            booking_id=id,
+            day=day,
+            selected_slots=submitted_slots,
+            conflicted_slots=error.conflict_slots,
+        )
+    except Validation as error:
+        return _render_edit(error, booking_id=id, day=day)
+    return redirect(url_for("admin.week", week=week_monday), code=303)
 
 
 @bp.get("/users")

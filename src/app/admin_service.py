@@ -1,4 +1,4 @@
-"""管理员只读运维视图：本周总览与按学号检索（FR-3、FR-7）。
+"""管理员运维视图：本周总览、按学号检索与改单页（FR-3、FR-7）。
 
 六态仍由 `slot_service.build_slot_grid()` 唯一判定；本模块只附加预约归属与异常标记。
 """
@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
 from src.app import slot_service
-from src.core.errors import Validation
+from src.core.errors import NotFound, Validation
 from src.core.timeutil import utc_to_local, week_bounds_utc
 from src.data import booking_repo, equipment_repo, occupancy_repo, user_repo
 
@@ -80,6 +80,18 @@ class StudentSearch:
     students: tuple[str, ...]
     bookings: tuple[StudentBooking, ...]
     truncated: bool = False
+
+
+@dataclass(frozen=True)
+class BookingEditView:
+    booking_id: str
+    student_no: str
+    equipment_id: str
+    equipment_name: str
+    week_monday: str
+    slots: tuple[str, ...]
+    slots_display: tuple[str, ...]
+    grid: object
 
 
 def _slot_label(slot_start: str) -> str:
@@ -233,6 +245,66 @@ def build_week_view(conn, *, week, viewer_id, now=None) -> WeekView:
             )
         ),
     )
+
+
+def build_booking_edit_view(
+    conn,
+    *,
+    booking_id,
+    viewer_id,
+    day=None,
+    selected_slots=None,
+    conflicted_slots=(),
+) -> BookingEditView:
+    """组装改单页：预约归属、当前时段与按日复用的六态格子。
+
+    `day` 缺省取原预约首个 slot 的本地日期；`selected_slots` 缺省为原时段，
+    409 重渲染时传入提交集合——两者只影响展示标记，不参与任何状态判定。
+    """
+    booking = booking_repo.get_by_id(conn, booking_id)
+    if booking is None:
+        raise NotFound("预约不存在或已取消")
+    rows = occupancy_repo.list_for_booking(conn, booking_id)
+    if not rows:
+        raise NotFound("预约不存在或已取消")
+    equipment = equipment_repo.get_by_id(conn, booking["equipment_id"])
+    if equipment is None:
+        raise NotFound("设备不存在")
+
+    slots = tuple(row["slot_start"] for row in rows)
+    day_text = (day or "").strip() or utc_to_local(slots[0]).date().isoformat()
+    selected = slots if selected_slots is None else tuple(selected_slots)
+    grid = slot_service.build_slot_grid(
+        conn,
+        equipment_id=booking["equipment_id"],
+        day=day_text,
+        viewer_id=viewer_id,
+        conflicted_slots=conflicted_slots,
+        selected_slots=selected,
+    )
+    if not conflicted_slots:
+        grid = replace(grid, conflict_scope="none")
+    owner = user_repo.get_by_id(conn, booking["owner_id"])
+    week_monday = week_bounds_utc(utc_to_local(slots[0]).date().isoformat())[0]
+    return BookingEditView(
+        booking_id=booking_id,
+        student_no=owner["student_no"] if owner is not None else "",
+        equipment_id=equipment["id"],
+        equipment_name=equipment["name"],
+        week_monday=week_monday,
+        slots=slots,
+        slots_display=tuple(_slot_label(slot_start) for slot_start in slots),
+        grid=grid,
+    )
+
+
+def booking_week_monday(conn, booking_id) -> str:
+    """返回预约首个 slot 所在的自然周周一，供改单成功后回跳原周视图。"""
+    rows = occupancy_repo.list_for_booking(conn, booking_id)
+    if not rows:
+        raise NotFound("预约不存在或已取消")
+    day = utc_to_local(rows[0]["slot_start"]).date().isoformat()
+    return week_bounds_utc(day)[0]
 
 
 def search_student_bookings(conn, student_no) -> StudentSearch:

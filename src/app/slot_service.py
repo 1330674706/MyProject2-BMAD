@@ -63,6 +63,11 @@ class SlotCell:
     def selectable(self) -> bool:
         return self.state == "free"
 
+    @property
+    def editable(self) -> bool:
+        """可提交勾选：空闲格，或本预约自己的已选格（改单时保留/顺延）。"""
+        return self.selectable or (self.selected and not self.conflicted)
+
 
 @dataclass(frozen=True)
 class SlotGrid:

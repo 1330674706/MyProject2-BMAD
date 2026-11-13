@@ -73,10 +73,12 @@ python -m pytest -q tests --basetemp=pytest_tmp_run -p no:cacheprovider
 
 ## 分工
 
-- **成员 A（姓名）**：规划阶段（brief / PRD / architecture / epics）、决策日志裁决、实验设计与记录、README 与录屏。
-- **成员 B（姓名）**：实现阶段（12 个 Story 的编码与测试）、并发证据 L1–L5、代码复审。
+| 学号 | 姓名 | 负责阶段 |
+| --- | --- | --- |
+| 2601020056 | 郑李林 | 规划产物（brief / PRD / architecture / epics / sprint-status）、决策裁决与记录、12 个 Story 的实现与测试、实验 A 与实验 B 的设计与记录 |
+| 2601027168 | 吴金宝 | bmb 自定义工作流（加分项）、10 分钟演示录屏、GitHub 仓库发布与协作提交 |
 
-> 填写真实分工，`git shortlog -sn` 能看到每人提交数。两个人的提交都要有，别都挂在一个账号上。
+详细到产出的分工与 50/50 的工作量划分见 `TEAM.md`。规划与实现阶段的 12 个 Story 在同一台开发机上连续完成，提交集中在一个 Git 作者名下；加分项、演示录屏与 GitHub 发布由吴金宝署名提交。
 
 ## AI 使用声明
 

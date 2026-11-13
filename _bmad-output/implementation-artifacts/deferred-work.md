@@ -1,3 +1,15 @@
+# 已知未做清单
+
+> **v1 封版（2026-11-11，见 `decision-log.md` D-017）**：本清单 32 条不再逐条补齐，全部顺延 v2。
+> 以下 4 条已实际完成，从清单归档，不再计入未完成项：
+>
+> 1. `LAB_ADMIN_USER` / `LAB_ADMIN_PASSWORD` 管理员种子 —— 已补做，`tests/test_ops_startup.py` 19 passed。
+> 2. 7 天窗口语义统一 —— 已由 D-010 改为「逐格判定」，PRD FR-4 同步。
+> 3. `PRD.md` §11 与 `epics.md` 关于 FR-2 是否由 Story 1.4 承载的表述 —— D-007 已统一。
+> 4. 架构契约未同步 3.3 的新增面（四个用例 / 仅两个 occupancy helper / §15.1 缺路由）—— 2026-11-11 已修，改为五个用例 + `delete_lock_rows()`，路由表补 5 条、删掉未实现的 `deactivate`。
+>
+> 其余条目保留原文，作为「知道没做、也说明了为什么」的证据。
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-ops-startup.md`
   summary: 补 README 的单条启动命令、环境变量表与 seed 说明。
   evidence: 本次用户明确只交付三件事，文档不在范围内；Story 1.4 AC1 的「README 中的命令」目前只有终端命令本身可用。
